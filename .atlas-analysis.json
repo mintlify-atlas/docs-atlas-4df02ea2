@@ -1,0 +1,217 @@
+{
+  "projectType": "api-service",
+  "projectName": "CricPR API",
+  "projectDescription": "RESTful API for cricket match management, real-time scoring, player statistics, and tournament organization.",
+  "theme": "palm",
+  "primaryColor": "#2E7D32",
+  "lightColor": "#66BB6A",
+  "darkColor": "#1B5E20",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/matches",
+              "concepts/tournaments",
+              "concepts/teams-and-players",
+              "concepts/scoring-system",
+              "concepts/guest-players"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/creating-matches",
+              "guides/live-scoring",
+              "guides/statistics",
+              "guides/offline-sync",
+              "guides/real-time-updates"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/auth/register",
+              "api/auth/login",
+              "api/auth/refresh-token",
+              "api/auth/logout"
+            ]
+          },
+          {
+            "group": "Matches",
+            "pages": [
+              "api/matches/create",
+              "api/matches/get",
+              "api/matches/list",
+              "api/matches/register-teams",
+              "api/matches/scorecard",
+              "api/matches/summary",
+              "api/matches/start",
+              "api/matches/end"
+            ]
+          },
+          {
+            "group": "Tournaments",
+            "pages": [
+              "api/tournaments/create",
+              "api/tournaments/get",
+              "api/tournaments/list",
+              "api/tournaments/update",
+              "api/tournaments/delete"
+            ]
+          },
+          {
+            "group": "Teams",
+            "pages": [
+              "api/teams/create",
+              "api/teams/get",
+              "api/teams/list",
+              "api/teams/update",
+              "api/teams/delete"
+            ]
+          },
+          {
+            "group": "Players",
+            "pages": [
+              "api/players/create",
+              "api/players/get",
+              "api/players/search",
+              "api/players/update",
+              "api/players/delete"
+            ]
+          },
+          {
+            "group": "Innings",
+            "pages": [
+              "api/innings/get",
+              "api/innings/current",
+              "api/innings/update"
+            ]
+          },
+          {
+            "group": "Overs & Balls",
+            "pages": [
+              "api/overs/create",
+              "api/overs/get",
+              "api/balls/record",
+              "api/balls/update"
+            ]
+          },
+          {
+            "group": "Statistics",
+            "pages": [
+              "api/stats/player",
+              "api/stats/team",
+              "api/stats/match"
+            ]
+          },
+          {
+            "group": "Notifications",
+            "pages": [
+              "api/notifications/list",
+              "api/notifications/mark-read"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api/users/get-profile",
+              "api/users/update-profile",
+              "api/users/delete-account"
+            ]
+          },
+          {
+            "group": "Admin",
+            "pages": [
+              "api/admin/users",
+              "api/admin/matches",
+              "api/admin/settings"
+            ]
+          },
+          {
+            "group": "Sync",
+            "pages": [
+              "api/sync/offline-sync",
+              "api/sync/batch-sync"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Infrastructure",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "infrastructure/environment-setup",
+              "infrastructure/docker",
+              "infrastructure/pm2-cluster"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "infrastructure/architecture-overview",
+              "infrastructure/database-schema",
+              "infrastructure/redis-caching",
+              "infrastructure/websockets"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Real-time cricket match scoring and updates",
+    "Tournament and league management",
+    "Player and team statistics tracking",
+    "Guest player support for casual matches",
+    "Offline sync capabilities",
+    "WebSocket-based live updates",
+    "Comprehensive REST API",
+    "Redis caching for performance",
+    "Cluster mode for scalability"
+  ],
+  "publicApiSurface": [
+    "POST /v1/auth/register",
+    "POST /v1/auth/login",
+    "POST /v1/matches",
+    "GET /v1/matches/:matchId",
+    "POST /v1/matches/:matchId/registerTeam",
+    "GET /v1/matches/:matchId/scorecard",
+    "GET /v1/matches/:matchId/summary",
+    "POST /v1/matches/:matchId/start",
+    "POST /v1/matches/:matchId/end",
+    "POST /v1/tournaments",
+    "GET /v1/tournaments",
+    "POST /v1/teams",
+    "GET /v1/teams",
+    "POST /v1/players",
+    "GET /v1/players/search",
+    "GET /v1/innings/:inningId",
+    "GET /v1/matches/current",
+    "POST /v1/overs",
+    "POST /v1/balls",
+    "GET /v1/stats/player/:playerId",
+    "GET /v1/stats/team/:teamId",
+    "GET /v1/stats/match/:matchId",
+    "GET /v1/notifications",
+    "POST /v1/sync/offline-sync"
+  ]
+}
