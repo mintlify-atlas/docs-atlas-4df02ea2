@@ -1,0 +1,172 @@
+---
+title: 'Update Ball'
+api: 'PUT /v1/balls/update/{id}'
+---
+
+Update an existing ball record with new information.
+
+<Note>This endpoint requires authentication.</Note>
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  Ball ID to update
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="runScored" type="integer">
+  Number of runs scored off this ball (minimum: 0)
+</ParamField>
+
+<ParamField body="isFour" type="boolean">
+  Whether this ball resulted in a boundary (4 runs)
+</ParamField>
+
+<ParamField body="isSix" type="boolean">
+  Whether this ball resulted in a six (6 runs)
+</ParamField>
+
+<ParamField body="extras" type="integer">
+  Number of extra runs (minimum: 0)
+</ParamField>
+
+<ParamField body="extraType" type="string">
+  Type of extra if any
+  - `noBall`
+  - `wide`
+  - `bye`
+  - `legBye`
+  - `null`
+</ParamField>
+
+<ParamField body="isLegalDelivery" type="boolean">
+  Whether this was a legal delivery
+</ParamField>
+
+<ParamField body="wicketPlayerOut" type="string">
+  ID of the player who got out
+</ParamField>
+
+<ParamField body="dismissalId" type="string">
+  ID of the dismissal record
+</ParamField>
+
+<ParamField body="isFreeHit" type="boolean">
+  Whether this ball is a free hit
+</ParamField>
+
+<ParamField body="direction" type="string">
+  Direction of the ball
+  - `Long Off`
+  - `Long On`
+  - `Deep Mid Wicket`
+  - `Deep Square Leg`
+  - `Deep Fine Leg`
+  - `Deep Point`
+  - `Deep Cover`
+  - `Third Man`
+</ParamField>
+
+<ParamField body="angle" type="number">
+  Angle of the ball trajectory in degrees
+</ParamField>
+
+<ParamField body="distance" type="number">
+  Distance the ball traveled in meters
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The updated ball object
+  <ResponseField name="id" type="string">
+    Ball ID
+  </ResponseField>
+  <ResponseField name="overId" type="string">
+    Over ID
+  </ResponseField>
+  <ResponseField name="batsmanId" type="string">
+    Batsman ID
+  </ResponseField>
+  <ResponseField name="bowlerId" type="string">
+    Bowler ID
+  </ResponseField>
+  <ResponseField name="runScored" type="integer">
+    Updated runs scored
+  </ResponseField>
+  <ResponseField name="isFour" type="boolean">
+    Updated boundary status
+  </ResponseField>
+  <ResponseField name="isSix" type="boolean">
+    Updated six status
+  </ResponseField>
+  <ResponseField name="extras" type="integer">
+    Updated extra runs
+  </ResponseField>
+  <ResponseField name="extraType" type="string">
+    Updated extra type
+  </ResponseField>
+  <ResponseField name="isLegalDelivery" type="boolean">
+    Updated legal delivery status
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X PUT "https://api.cricpr.com/v1/balls/update/507f1f77bcf86cd799439016" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "runScored": 2,
+    "isFour": false,
+    "isSix": false,
+    "extras": 0,
+    "extraType": null,
+    "isLegalDelivery": true
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "507f1f77bcf86cd799439016",
+    "overId": "507f1f77bcf86cd799439011",
+    "batsmanId": "507f1f77bcf86cd799439012",
+    "nonStrikerId": "507f1f77bcf86cd799439013",
+    "bowlerId": "507f1f77bcf86cd799439014",
+    "runScored": 2,
+    "isFour": false,
+    "isSix": false,
+    "extras": 0,
+    "extraType": null,
+    "isLegalDelivery": true
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - Invalid input data
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="403" type="error">
+  Forbidden - Insufficient permissions
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Ball not found
+</ResponseField>

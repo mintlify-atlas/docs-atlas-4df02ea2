@@ -1,0 +1,126 @@
+---
+title: Introduction
+description: Welcome to CricPR API - A comprehensive cricket match management REST API
+---
+
+# Welcome to CricPR API
+
+CricPR is a powerful REST API designed for managing cricket matches, teams, players, and live scoring. Whether you're building a cricket scoring app, tournament management system, or analytics platform, CricPR provides all the tools you need.
+
+## What can you build?
+
+<CardGroup cols={2}>
+  <Card
+    title="Live Scoring Apps"
+    icon="bolt"
+    href="/quickstart"
+  >
+    Real-time ball-by-ball commentary and live match updates
+  </Card>
+  <Card
+    title="Tournament Management"
+    icon="trophy"
+    href="/api/tournaments/create"
+  >
+    Organize leagues, tournaments, and multi-team competitions
+  </Card>
+  <Card
+    title="Player Statistics"
+    icon="chart-line"
+    href="/api/stats/player"
+  >
+    Comprehensive batting, bowling, and fielding analytics
+  </Card>
+  <Card
+    title="Team Management"
+    icon="users"
+    href="/api/teams/create"
+  >
+    Create and manage teams with player rosters
+  </Card>
+</CardGroup>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Match Formats" icon="calendar">
+    Support for Test, ODI, T20, and custom limited-overs formats with ICC-compliant rules
+  </Card>
+  <Card title="Real-time Scoring" icon="bolt">
+    Ball-by-ball tracking with live updates via WebSocket connections
+  </Card>
+  <Card title="Comprehensive Stats" icon="chart-bar">
+    Detailed player and team statistics with ICC-style scorecards
+  </Card>
+  <Card title="Authentication & Security" icon="lock">
+    JWT-based authentication with role-based access control
+  </Card>
+</CardGroup>
+
+## API base URL
+
+All API endpoints are prefixed with `/v1`:
+
+```
+https://api.cricpr.com/v1
+```
+
+## Getting started
+
+<Steps>
+  <Step title="Create an account">
+    Register for a free account to get started with the API
+  </Step>
+  <Step title="Authenticate">
+    Obtain your JWT access token by logging in
+  </Step>
+  <Step title="Create your first match">
+    Set up teams and create a match to start scoring
+  </Step>
+  <Step title="Start scoring">
+    Use the live scoring endpoints to record ball-by-ball action
+  </Step>
+</Steps>
+
+<Card
+  title="Quick Start Guide"
+  icon="rocket"
+  href="/quickstart"
+>
+  Follow our quickstart guide to create your first match in under 5 minutes
+</Card>
+
+## Popular endpoints
+
+<CardGroup cols={3}>
+  <Card title="Authentication" href="/authentication">
+    JWT-based auth system
+  </Card>
+  <Card title="Matches" href="/api/matches/create">
+    Create and manage matches
+  </Card>
+  <Card title="Teams" href="/api/teams/create">
+    Organize team rosters
+  </Card>
+  <Card title="Players" href="/api/players/create">
+    Manage player profiles
+  </Card>
+  <Card title="Scoring" href="/api/balls/record">
+    Record ball-by-ball data
+  </Card>
+  <Card title="Statistics" href="/api/stats/player">
+    Access match and player stats
+  </Card>
+</CardGroup>
+
+## Support
+
+Need help? We're here to support you:
+
+- **Documentation**: Browse our comprehensive API reference
+- **Community**: Join our developer community
+- **Email**: support@cricpr.com
+
+<Note>
+  This API is built with Express.js, MongoDB, and Socket.IO for real-time features.
+</Note>

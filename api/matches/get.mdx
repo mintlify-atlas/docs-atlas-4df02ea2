@@ -1,0 +1,143 @@
+---
+title: "Get Match"
+api: "GET /v1/matches/{matchId}"
+---
+
+Retrieve detailed information about a specific match including team instances, players, and match configuration.
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  Match ID (MongoDB ObjectId)
+</ParamField>
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Match title
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Match status: `pending`, `inProgress`, `completed`, `cancelled`, `postponed`
+</ResponseField>
+
+<ResponseField name="startdatetime" type="string">
+  Match start date and time
+</ResponseField>
+
+<ResponseField name="endDateTime" type="string">
+  Match end date and time (if completed)
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Match location
+</ResponseField>
+
+<ResponseField name="matchCategory" type="string">
+  Match category
+</ResponseField>
+
+<ResponseField name="teamAInstanceId" type="object">
+  Team A instance for this match
+  <ResponseField name="_id" type="string">
+    Team instance ID
+  </ResponseField>
+  <ResponseField name="teamId" type="object">
+    Team information (id, name, logo, location)
+  </ResponseField>
+  <ResponseField name="players" type="array">
+    Array of player objects with id, shortName, role, userId, profilePicture
+    - Regular players have `userId` populated
+    - Guest players have `userId: null` and `isGuest: true`
+  </ResponseField>
+  <ResponseField name="captainId" type="string">
+    Captain player ID
+  </ResponseField>
+  <ResponseField name="scorerId" type="string">
+    Scorer player ID
+  </ResponseField>
+  <ResponseField name="wicketKeeperId" type="string">
+    Wicket keeper player ID
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="teamBInstanceId" type="object">
+  Team B instance for this match (same structure as teamAInstanceId)
+</ResponseField>
+
+<ResponseField name="matchConfigId" type="object">
+  Match configuration
+  <ResponseField name="_id" type="string">
+    Configuration ID
+  </ResponseField>
+  <ResponseField name="ballType" type="string">
+    Ball type: `leather`, `tennis`, `other`
+  </ResponseField>
+  <ResponseField name="pitchType" type="string">
+    Pitch type: `rough`, `cement`, `turf`, `astroturf`, `matting`, `other`
+  </ResponseField>
+  <ResponseField name="overs" type="integer">
+    Number of overs
+  </ResponseField>
+  <ResponseField name="matchType" type="string">
+    Match type: `test`, `odi`, `t20`, `limitedOvers`
+  </ResponseField>
+  <ResponseField name="noOfDays" type="integer">
+    Number of days
+  </ResponseField>
+  <ResponseField name="oversPerBowler" type="integer">
+    Maximum overs per bowler
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="tossWinnerTeamInstanceId" type="object">
+  Team instance that won the toss (if toss completed)
+</ResponseField>
+
+<ResponseField name="tossDecision" type="string">
+  Toss decision: `bat` or `bowl` (if toss completed)
+</ResponseField>
+
+<ResponseField name="tossTime" type="string">
+  Time when toss was completed
+</ResponseField>
+
+<ResponseField name="scorerName" type="string">
+  Name of the current scorer
+</ResponseField>
+
+<ResponseField name="teamsRegistered" type="boolean">
+  Whether teams have been registered
+</ResponseField>
+
+## Guest Players
+
+Guest players appear in the player arrays with the following characteristics:
+- `userId`: `null`
+- `isGuest`: `true`
+- `shortName`: Player's name
+- `profilePicture`: `null`
+- `battingStyle`: `none`
+- `bowlingStyle`: `none`
+
+Regular players have a populated `userId` object with profile information.
+
+## Example Request
+
+```bash
+curl -X GET https://api.cricpr.com/v1/matches/688cbcf35ceca63a9cd62b6d
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid match ID format
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Match not found with the specified ID
+</ResponseField>

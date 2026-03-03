@@ -1,0 +1,196 @@
+---
+title: "Get Match Summary"
+api: "GET /v1/matches/{matchId}/summary"
+---
+
+Retrieve comprehensive match summary including team scores, result, and player of the match.
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  Match ID (MongoDB ObjectId)
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="forceRefresh" type="boolean" default={false}>
+  Force refresh the cached summary data
+</ParamField>
+
+<ParamField query="skipCache" type="boolean" default={false}>
+  Skip cache and fetch fresh data
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status: `success`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Summary data
+  <ResponseField name="match" type="object">
+    Match information
+    <ResponseField name="id" type="string">
+      Match ID
+    </ResponseField>
+    <ResponseField name="title" type="string">
+      Match title
+    </ResponseField>
+    <ResponseField name="status" type="string">
+      Match status: `pending`, `inProgress`, `completed`, `cancelled`, `postponed`
+    </ResponseField>
+    <ResponseField name="startdatetime" type="string">
+      Match start date and time
+    </ResponseField>
+    <ResponseField name="endDateTime" type="string">
+      Match end date and time
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="teamScores" type="array">
+    Team scores for each innings
+    <ResponseField name="teamName" type="string">
+      Team name
+    </ResponseField>
+    <ResponseField name="teamLogo" type="string">
+      Team logo URL
+    </ResponseField>
+    <ResponseField name="score" type="integer">
+      Total runs scored
+    </ResponseField>
+    <ResponseField name="wickets" type="integer">
+      Wickets lost
+    </ResponseField>
+    <ResponseField name="overs" type="string">
+      Overs bowled (e.g., "20.0")
+    </ResponseField>
+  </ResponseField>
+  <ResponseField name="result" type="string">
+    Match result with margin (e.g., "Team A won by 11 runs", "Match tied")
+  </ResponseField>
+  <ResponseField name="playerOfTheMatch" type="object" nullable>
+    Player of the match (if selected)
+    <ResponseField name="playerName" type="string">
+      Player name (uses `shortName` for guest players)
+    </ResponseField>
+    <ResponseField name="playerImage" type="string" nullable>
+      Player profile picture URL (null for guest players)
+    </ResponseField>
+    <ResponseField name="teamName" type="string">
+      Player's team name
+    </ResponseField>
+    <ResponseField name="battingStats" type="object" nullable>
+      Batting statistics (if player batted)
+      <ResponseField name="runs" type="integer">
+        Runs scored
+      </ResponseField>
+      <ResponseField name="balls" type="integer">
+        Balls faced
+      </ResponseField>
+      <ResponseField name="fours" type="integer">
+        Number of fours
+      </ResponseField>
+      <ResponseField name="sixes" type="integer">
+        Number of sixes
+      </ResponseField>
+      <ResponseField name="isNotOut" type="boolean">
+        Whether player was not out
+      </ResponseField>
+    </ResponseField>
+    <ResponseField name="bowlingStats" type="object" nullable>
+      Bowling statistics (if player bowled)
+      <ResponseField name="overs" type="number">
+        Overs bowled
+      </ResponseField>
+      <ResponseField name="maidens" type="integer">
+        Maiden overs
+      </ResponseField>
+      <ResponseField name="runs" type="integer">
+        Runs conceded
+      </ResponseField>
+      <ResponseField name="wickets" type="integer">
+        Wickets taken
+      </ResponseField>
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## Guest Players in Summary
+
+- Guest players can be selected as player of the match
+- Guest players display `shortName` as playerName
+- Guest players have `playerImage: null`
+- Both batting and bowling stats are included for guest players
+
+## Example Request
+
+```bash
+curl -X GET https://api.cricpr.com/v1/matches/507f1f77bcf86cd799439011/summary
+```
+
+```bash
+# Force refresh cached data
+curl -X GET "https://api.cricpr.com/v1/matches/507f1f77bcf86cd799439011/summary?forceRefresh=true"
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "match": {
+      "id": "507f1f77bcf86cd799439011",
+      "title": "Team A vs Team B",
+      "status": "completed",
+      "startdatetime": "2025-01-15T10:00:00.000Z",
+      "endDateTime": "2025-01-15T18:30:00.000Z"
+    },
+    "teamScores": [
+      {
+        "teamName": "Team A",
+        "teamLogo": "https://example.com/team-a-logo.png",
+        "score": 145,
+        "wickets": 8,
+        "overs": "20.0"
+      },
+      {
+        "teamName": "Team B",
+        "teamLogo": "https://example.com/team-b-logo.png",
+        "score": 134,
+        "wickets": 8,
+        "overs": "19.3"
+      }
+    ],
+    "result": "Team A won by 11 runs",
+    "playerOfTheMatch": {
+      "playerName": "John Doe",
+      "playerImage": "https://example.com/john-doe.jpg",
+      "teamName": "Team A",
+      "battingStats": {
+        "runs": 67,
+        "balls": 45,
+        "fours": 4,
+        "sixes": 2,
+        "isNotOut": false
+      },
+      "bowlingStats": {
+        "overs": 4.0,
+        "maidens": 0,
+        "runs": 22,
+        "wickets": 3
+      }
+    }
+  }
+}
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid match ID format
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Match not found or insufficient data to generate summary
+</ResponseField>

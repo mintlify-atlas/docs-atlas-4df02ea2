@@ -1,0 +1,159 @@
+---
+title: 'Create Tournament'
+api: 'POST /v1/tournaments'
+---
+
+Create a new tournament with specified details.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Tournament name
+</ParamField>
+
+<ParamField body="city" type="string" required>
+  City where the tournament will be held
+</ParamField>
+
+<ParamField body="startDate" type="date" required>
+  Tournament start date
+</ParamField>
+
+<ParamField body="endDate" type="date" required>
+  Tournament end date (must be after startDate)
+</ParamField>
+
+<ParamField body="maxTeams" type="integer" required>
+  Maximum number of teams allowed (minimum: 2)
+</ParamField>
+
+<ParamField body="format" type="string" required>
+  Tournament format. One of: `round_robin`, `knockout`, `hybrid`, `point_based`
+</ParamField>
+
+<ParamField body="organizerType" type="string" required>
+  Type of organizer. One of: `User`, `Player`
+</ParamField>
+
+<ParamField body="organizerId" type="string" required>
+  ID of the organizer (User or Player ID based on organizerType)
+</ParamField>
+
+<ParamField body="coverImage" type="string">
+  URL of the tournament cover image
+</ParamField>
+
+<ParamField body="banner" type="string">
+  URL of the tournament banner
+</ParamField>
+
+<ParamField body="description" type="string">
+  Tournament description
+</ParamField>
+
+<ParamField body="registrationDeadline" type="date">
+  Deadline for team registration
+</ParamField>
+
+<ParamField body="prize" type="string">
+  Prize details
+</ParamField>
+
+<ParamField body="entryFee" type="number">
+  Entry fee amount (minimum: 0, default: 0)
+</ParamField>
+
+<ParamField body="isPublic" type="boolean">
+  Whether the tournament is public (default: true)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Tournament ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Tournament name
+</ResponseField>
+
+<ResponseField name="city" type="string">
+  City
+</ResponseField>
+
+<ResponseField name="startDate" type="date">
+  Start date
+</ResponseField>
+
+<ResponseField name="endDate" type="date">
+  End date
+</ResponseField>
+
+<ResponseField name="maxTeams" type="integer">
+  Maximum teams
+</ResponseField>
+
+<ResponseField name="format" type="string">
+  Tournament format
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Tournament status
+</ResponseField>
+
+<ResponseField name="organizerId" type="string">
+  Organizer ID
+</ResponseField>
+
+<ResponseField name="organizerType" type="string">
+  Organizer type
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/tournaments \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Summer Cricket Championship 2024",
+    "city": "Karachi",
+    "startDate": "2024-06-01",
+    "endDate": "2024-06-15",
+    "maxTeams": 16,
+    "format": "round_robin",
+    "organizerType": "User",
+    "organizerId": "60d5ec49f1b2c8b1f8e4e1a1",
+    "description": "Annual summer cricket tournament",
+    "entryFee": 5000,
+    "isPublic": true
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "60d5ec49f1b2c8b1f8e4e1a2",
+  "name": "Summer Cricket Championship 2024",
+  "city": "Karachi",
+  "startDate": "2024-06-01T00:00:00.000Z",
+  "endDate": "2024-06-15T00:00:00.000Z",
+  "maxTeams": 16,
+  "format": "round_robin",
+  "status": "upcoming",
+  "organizerId": "60d5ec49f1b2c8b1f8e4e1a1",
+  "organizerType": "User",
+  "description": "Annual summer cricket tournament",
+  "entryFee": 5000,
+  "isPublic": true
+}
+```
+</ResponseExample>

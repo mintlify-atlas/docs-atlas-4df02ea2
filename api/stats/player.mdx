@@ -1,0 +1,146 @@
+---
+title: 'Get Player Match Stats'
+api: 'GET /v1/stats/match/{matchId}/player/{playerId}'
+---
+
+Retrieve statistics for a specific player in a match.
+
+<Note>This endpoint requires authentication with `getStats` permission.</Note>
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  MongoDB ObjectId of the match
+</ParamField>
+
+<ParamField path="playerId" type="string" required>
+  MongoDB ObjectId of the player
+</ParamField>
+
+## Response
+
+<ResponseField name="playerId" type="string">
+  Player ID
+</ResponseField>
+
+<ResponseField name="playerName" type="string">
+  Player name
+</ResponseField>
+
+<ResponseField name="matchId" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="batting" type="object">
+  Batting statistics
+  <ResponseField name="runs" type="integer">
+    Total runs scored
+  </ResponseField>
+  <ResponseField name="ballsFaced" type="integer">
+    Total balls faced
+  </ResponseField>
+  <ResponseField name="fours" type="integer">
+    Number of fours
+  </ResponseField>
+  <ResponseField name="sixes" type="integer">
+    Number of sixes
+  </ResponseField>
+  <ResponseField name="strikeRate" type="number">
+    Strike rate (runs per 100 balls)
+  </ResponseField>
+  <ResponseField name="isOut" type="boolean">
+    Whether the player got out
+  </ResponseField>
+  <ResponseField name="dismissalType" type="string">
+    Type of dismissal if out
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="bowling" type="object">
+  Bowling statistics
+  <ResponseField name="overs" type="number">
+    Overs bowled
+  </ResponseField>
+  <ResponseField name="runs" type="integer">
+    Runs conceded
+  </ResponseField>
+  <ResponseField name="wickets" type="integer">
+    Wickets taken
+  </ResponseField>
+  <ResponseField name="maidens" type="integer">
+    Maiden overs
+  </ResponseField>
+  <ResponseField name="economy" type="number">
+    Economy rate (runs per over)
+  </ResponseField>
+  <ResponseField name="dotBalls" type="integer">
+    Number of dot balls
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="fielding" type="object">
+  Fielding statistics
+  <ResponseField name="catches" type="integer">
+    Number of catches
+  </ResponseField>
+  <ResponseField name="runOuts" type="integer">
+    Number of run-outs
+  </ResponseField>
+  <ResponseField name="stumpings" type="integer">
+    Number of stumpings (if wicket-keeper)
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.cricpr.com/v1/stats/match/507f1f77bcf86cd799439011/player/507f1f77bcf86cd799439012" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "playerId": "507f1f77bcf86cd799439012",
+  "playerName": "John Doe",
+  "matchId": "507f1f77bcf86cd799439011",
+  "batting": {
+    "runs": 45,
+    "ballsFaced": 32,
+    "fours": 5,
+    "sixes": 2,
+    "strikeRate": 140.63,
+    "isOut": true,
+    "dismissalType": "caught"
+  },
+  "bowling": {
+    "overs": 4,
+    "runs": 28,
+    "wickets": 2,
+    "maidens": 0,
+    "economy": 7.0,
+    "dotBalls": 10
+  },
+  "fielding": {
+    "catches": 1,
+    "runOuts": 0,
+    "stumpings": 0
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="403" type="error">
+  Forbidden - Insufficient permissions
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Match or player not found
+</ResponseField>

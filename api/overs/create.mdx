@@ -1,0 +1,135 @@
+---
+title: 'Start Over'
+api: 'POST /v1/overs/start'
+---
+
+Initialize a new over for an innings with the specified bowler and batsmen.
+
+<Note>This endpoint requires authentication.</Note>
+
+## Body Parameters
+
+<ParamField body="inningId" type="string" required>
+  MongoDB ObjectId of the innings
+</ParamField>
+
+<ParamField body="bowlerId" type="string" required>
+  MongoDB ObjectId of the bowler delivering this over
+</ParamField>
+
+<ParamField body="batsmanId" type="string" required>
+  MongoDB ObjectId of the striker batsman
+</ParamField>
+
+<ParamField body="nonStrikerId" type="string" required>
+  MongoDB ObjectId of the non-striker batsman
+</ParamField>
+
+<ParamField body="overNumber" type="integer" required>
+  Over number in the innings (minimum: 1)
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Over data and match state
+  <ResponseField name="over" type="object">
+    The created over object
+  </ResponseField>
+  <ResponseField name="currentScore" type="integer">
+    Current total score
+  </ResponseField>
+  <ResponseField name="currentWickets" type="integer">
+    Current total wickets
+  </ResponseField>
+  <ResponseField name="oversStatus" type="string">
+    Over status (e.g., "7.4/20")
+  </ResponseField>
+  <ResponseField name="strikerBatsman" type="object">
+    Details of striker batsman including score and balls faced
+  </ResponseField>
+  <ResponseField name="nonStrikerBatsman" type="object">
+    Details of non-striker batsman including score and balls faced
+  </ResponseField>
+  <ResponseField name="currentBowler" type="string">
+    Current bowler name
+  </ResponseField>
+  <ResponseField name="last3Overs" type="array">
+    Array of last 3 overs data
+  </ResponseField>
+  <ResponseField name="last5Overs" type="array">
+    Array of last 5 overs data
+  </ResponseField>
+  <ResponseField name="last1Over" type="array">
+    Array of last over data
+  </ResponseField>
+  <ResponseField name="currentOverId" type="string">
+    ID of the created over
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST "https://api.cricpr.com/v1/overs/start" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inningId": "507f1f77bcf86cd799439011",
+    "bowlerId": "507f1f77bcf86cd799439012",
+    "batsmanId": "507f1f77bcf86cd799439013",
+    "nonStrikerId": "507f1f77bcf86cd799439014",
+    "overNumber": 1
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "over": {
+      "id": "507f1f77bcf86cd799439020",
+      "inningId": "507f1f77bcf86cd799439011",
+      "bowlerId": "507f1f77bcf86cd799439012",
+      "overNumber": 1
+    },
+    "currentScore": 0,
+    "currentWickets": 0,
+    "oversStatus": "0.0/20",
+    "strikerBatsman": {
+      "id": "507f1f77bcf86cd799439013",
+      "name": "John Doe",
+      "score": 0,
+      "ballFaced": 0
+    },
+    "nonStrikerBatsman": {
+      "id": "507f1f77bcf86cd799439014",
+      "name": "Jane Smith",
+      "score": 0,
+      "ballFaced": 0
+    },
+    "currentBowler": "Bob Wilson",
+    "currentOverId": "507f1f77bcf86cd799439020"
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - Invalid input data
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Innings not found
+</ResponseField>

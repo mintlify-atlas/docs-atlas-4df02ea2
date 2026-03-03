@@ -1,0 +1,109 @@
+---
+title: 'Create Player'
+api: 'POST /v1/players'
+---
+
+Create a new player profile.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Request Body
+
+<ParamField body="userId" type="string" required>
+  User ID to associate with this player profile
+</ParamField>
+
+<ParamField body="battingStyle" type="string">
+  Batting style (e.g., "Right-hand bat", "Left-hand bat")
+</ParamField>
+
+<ParamField body="bowlingStyle" type="string">
+  Bowling style (e.g., "Right-arm fast", "Left-arm orthodox")
+</ParamField>
+
+<ParamField body="primaryRole" type="string">
+  Primary playing role (e.g., "Batsman", "Bowler", "All-rounder", "Wicket-keeper")
+</ParamField>
+
+<ParamField body="shortName" type="string">
+  Short name or nickname
+</ParamField>
+
+<ParamField body="isVerified" type="boolean">
+  Verification status
+</ParamField>
+
+<ParamField body="status" type="string">
+  Player status (e.g., "active", "inactive")
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Player ID
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Associated user ID
+</ResponseField>
+
+<ResponseField name="battingStyle" type="string">
+  Batting style
+</ResponseField>
+
+<ResponseField name="bowlingStyle" type="string">
+  Bowling style
+</ResponseField>
+
+<ResponseField name="primaryRole" type="string">
+  Primary role
+</ResponseField>
+
+<ResponseField name="shortName" type="string">
+  Short name
+</ResponseField>
+
+<ResponseField name="isVerified" type="boolean">
+  Verification status
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Player status
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/players \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "6887d2f86e607c4c48b33c65",
+    "battingStyle": "Left-hand bat",
+    "bowlingStyle": "Slow left-arm orthodox",
+    "primaryRole": "All-rounder",
+    "shortName": "Johnny",
+    "status": "active"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688cb06818c2232abefa254e",
+  "userId": "6887d2f86e607c4c48b33c65",
+  "battingStyle": "Left-hand bat",
+  "bowlingStyle": "Slow left-arm orthodox",
+  "primaryRole": "All-rounder",
+  "shortName": "Johnny",
+  "isVerified": false,
+  "status": "active"
+}
+```
+</ResponseExample>

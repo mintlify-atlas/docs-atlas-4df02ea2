@@ -1,0 +1,282 @@
+---
+title: "Admin - Settings & Stats"
+api: "GET /v1/admin/stats"
+description: "Admin endpoint to retrieve system statistics and manage settings"
+---
+
+Retrieve comprehensive system statistics and manage admin settings. This endpoint is restricted to admin users only.
+
+## Authentication
+
+This endpoint requires admin authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+```
+
+## Get System Statistics
+
+### Endpoint
+
+```
+GET /v1/admin/stats
+```
+
+### Response
+
+<ResponseField name="totalUsers" type="integer">
+  Total number of registered users
+</ResponseField>
+
+<ResponseField name="totalMatches" type="integer">
+  Total number of matches in the system
+</ResponseField>
+
+<ResponseField name="totalTeams" type="integer">
+  Total number of teams
+</ResponseField>
+
+<ResponseField name="totalTournaments" type="integer">
+  Total number of tournaments
+</ResponseField>
+
+<ResponseField name="activeMatches" type="integer">
+  Number of currently live matches
+</ResponseField>
+
+<ResponseField name="completedMatches" type="integer">
+  Number of completed matches
+</ResponseField>
+
+<ResponseField name="recentSignups" type="integer">
+  Number of new users in the last 30 days
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/admin/stats' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "totalUsers": 15420,
+  "totalMatches": 3567,
+  "totalTeams": 892,
+  "totalTournaments": 145,
+  "activeMatches": 12,
+  "completedMatches": 3234,
+  "recentSignups": 342
+}
+```
+
+</ResponseExample>
+
+## Get Dashboard Numbers
+
+### Endpoint
+
+```
+GET /v1/admin/dashboardNumbers
+```
+
+Retrieve key metrics for the admin dashboard.
+
+### Example
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/admin/dashboardNumbers' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN'
+```
+
+## Update Admin Profile
+
+### Update Name
+
+```
+PATCH /v1/admin/edit-name
+```
+
+#### Body Parameters
+
+<ParamField body="name" type="string" required>
+  New admin name (1-100 characters)
+</ParamField>
+
+#### Example
+
+```bash cURL
+curl --request PATCH \
+  --url 'https://api.cricpr.com/v1/admin/edit-name' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Admin User"
+  }'
+```
+
+### Update Profile Photo
+
+```
+PATCH /v1/admin/edit-profilePhoto
+```
+
+Upload a new profile photo using multipart/form-data.
+
+#### Example
+
+```bash cURL
+curl --request PATCH \
+  --url 'https://api.cricpr.com/v1/admin/edit-profilePhoto' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN' \
+  --form 'file=@/path/to/profile-photo.jpg'
+```
+
+## Change Password
+
+### Verify Current Password
+
+```
+POST /v1/admin/vp
+```
+
+Verify the admin's current password before allowing a password change.
+
+#### Body Parameters
+
+<ParamField body="currentPassword" type="string" required>
+  Current password for verification
+</ParamField>
+
+#### Example
+
+```bash cURL
+curl --request POST \
+  --url 'https://api.cricpr.com/v1/admin/vp' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "currentPassword": "oldPassword123"
+  }'
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Password check successful"
+}
+```
+
+### Update Password
+
+```
+PATCH /v1/admin/cp
+```
+
+Update the admin's password after verification.
+
+#### Body Parameters
+
+<ParamField body="newPassword" type="string" required>
+  New password (minimum 8 characters, must contain at least one letter and one number)
+</ParamField>
+
+<ParamField body="confirmPassword" type="string" required>
+  Confirm new password (must match newPassword)
+</ParamField>
+
+#### Example
+
+```bash cURL
+curl --request PATCH \
+  --url 'https://api.cricpr.com/v1/admin/cp' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "newPassword": "newPassword123",
+    "confirmPassword": "newPassword123"
+  }'
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "message": "Password changed successfully"
+}
+```
+
+## Admin Logout
+
+```
+POST /v1/admin/logout
+```
+
+Logout and invalidate the admin's refresh token.
+
+### Body Parameters
+
+<ParamField body="refreshToken" type="string" required>
+  The refresh token to invalidate
+</ParamField>
+
+### Example
+
+```bash cURL
+curl --request POST \
+  --url 'https://api.cricpr.com/v1/admin/logout' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  }'
+```
+
+### Response
+
+Returns `204 No Content` on successful logout.
+
+## Error Responses
+
+<ResponseField name="400 Bad Request">
+  Invalid request data
+  
+  ```json
+  {
+    "success": false,
+    "message": "Passwords do not match"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403 Forbidden">
+  User is not an admin
+  
+  ```json
+  {
+    "code": 403,
+    "message": "Admin access required"
+  }
+  ```
+</ResponseField>

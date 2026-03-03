@@ -1,0 +1,77 @@
+---
+title: 'Get Team'
+api: 'GET /v1/teams/:teamId'
+---
+
+Retrieve details of a specific team.
+
+## Path Parameters
+
+<ParamField path="teamId" type="string" required>
+  The ID of the team to retrieve
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Team ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Team name
+</ResponseField>
+
+<ResponseField name="logo" type="string">
+  Team logo URL
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Team location
+</ResponseField>
+
+<ResponseField name="captain" type="object">
+  Captain player details
+</ResponseField>
+
+<ResponseField name="players" type="array">
+  Array of player objects
+</ResponseField>
+
+<ResponseField name="createdBy" type="string">
+  Player ID of the creator
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET https://api.cricpr.com/v1/teams/688a38f0fea3456a96402a30
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688a38f0fea3456a96402a30",
+  "name": "Atnest 11",
+  "logo": "https://example.com/logo.png",
+  "location": "Karachi, Pakistan",
+  "captain": {
+    "id": "688cb06818c2232abefa254e",
+    "userId": "6887d2f86e607c4c48b33c65",
+    "battingStyle": "Left-hand bat",
+    "bowlingStyle": "Slow left-arm orthodox",
+    "isVerified": false,
+    "status": "active"
+  },
+  "players": [
+    {
+      "id": "688cb06818c2232abefa254e",
+      "userId": "6887d2f86e607c4c48b33c65",
+      "shortName": "John Doe",
+      "battingStyle": "Left-hand bat",
+      "bowlingStyle": "Slow left-arm orthodox"
+    }
+  ],
+  "createdBy": "688cb06818c2232abefa254e"
+}
+```
+</ResponseExample>

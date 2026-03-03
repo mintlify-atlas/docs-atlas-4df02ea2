@@ -1,0 +1,120 @@
+---
+title: 'Update Tournament'
+api: 'PATCH /v1/tournaments/:tournamentId'
+---
+
+Update a tournament's details.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="tournamentId" type="string" required>
+  The ID of the tournament to update
+</ParamField>
+
+## Request Body
+
+At least one field must be provided.
+
+<ParamField body="name" type="string">
+  Tournament name
+</ParamField>
+
+<ParamField body="coverImage" type="string">
+  Cover image URL
+</ParamField>
+
+<ParamField body="banner" type="string">
+  Banner URL
+</ParamField>
+
+<ParamField body="city" type="string">
+  City
+</ParamField>
+
+<ParamField body="startDate" type="date">
+  Start date
+</ParamField>
+
+<ParamField body="endDate" type="date">
+  End date
+</ParamField>
+
+<ParamField body="maxTeams" type="integer">
+  Maximum teams (minimum: 2)
+</ParamField>
+
+<ParamField body="status" type="string">
+  Tournament status. One of: `upcoming`, `ongoing`, `completed`, `cancelled`
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description
+</ParamField>
+
+<ParamField body="registrationDeadline" type="date">
+  Registration deadline
+</ParamField>
+
+<ParamField body="prize" type="string">
+  Prize details
+</ParamField>
+
+<ParamField body="entryFee" type="number">
+  Entry fee (minimum: 0)
+</ParamField>
+
+<ParamField body="isPublic" type="boolean">
+  Public visibility
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Tournament ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated tournament name
+</ResponseField>
+
+<ResponseField name="city" type="string">
+  Updated city
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Updated status
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH https://api.cricpr.com/v1/tournaments/60d5ec49f1b2c8b1f8e4e1a2 \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "ongoing",
+    "description": "Tournament has started!"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "60d5ec49f1b2c8b1f8e4e1a2",
+  "name": "Summer Cricket Championship 2024",
+  "city": "Karachi",
+  "status": "ongoing",
+  "description": "Tournament has started!",
+  "format": "round_robin",
+  "maxTeams": 16
+}
+```
+</ResponseExample>

@@ -1,0 +1,78 @@
+---
+title: 'Get Player'
+api: 'GET /v1/players/:playerId'
+---
+
+Retrieve details of a specific player.
+
+## Path Parameters
+
+<ParamField path="playerId" type="string" required>
+  The ID of the player to retrieve
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="statusFilter" type="string">
+  Filter by status. One of: `active`, `not_deleted`, `all`. Default: `not_deleted`
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Player ID
+</ResponseField>
+
+<ResponseField name="userId" type="object">
+  Associated user details
+</ResponseField>
+
+<ResponseField name="battingStyle" type="string">
+  Batting style
+</ResponseField>
+
+<ResponseField name="bowlingStyle" type="string">
+  Bowling style
+</ResponseField>
+
+<ResponseField name="primaryRole" type="string">
+  Primary role
+</ResponseField>
+
+<ResponseField name="shortName" type="string">
+  Short name
+</ResponseField>
+
+<ResponseField name="isVerified" type="boolean">
+  Verification status
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Player status
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET https://api.cricpr.com/v1/players/688cb06818c2232abefa254e
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688cb06818c2232abefa254e",
+  "userId": {
+    "id": "6887d2f86e607c4c48b33c65",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "profilePicture": "https://example.com/profile.jpg"
+  },
+  "battingStyle": "Left-hand bat",
+  "bowlingStyle": "Slow left-arm orthodox",
+  "primaryRole": "All-rounder",
+  "shortName": "Johnny",
+  "isVerified": false,
+  "status": "active"
+}
+```
+</ResponseExample>

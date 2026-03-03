@@ -1,0 +1,92 @@
+---
+title: "Refresh Token"
+description: "Refresh authentication tokens using a refresh token"
+---
+
+## POST /v1/auth/refresh-tokens
+
+Obtain new access and refresh tokens using a valid refresh token. Use this endpoint when your access token expires to maintain authentication without requiring the user to log in again.
+
+### Request Body
+
+<ParamField body="refreshToken" type="string" required>
+  A valid refresh token obtained from login or registration
+</ParamField>
+
+### Response
+
+<ResponseField name="access" type="object">
+  New access token details
+  
+  <ResponseField name="token" type="string">
+    JWT access token for API authentication
+  </ResponseField>
+  
+  <ResponseField name="expires" type="string">
+    Token expiration timestamp (ISO 8601)
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="refresh" type="object">
+  New refresh token details
+  
+  <ResponseField name="token" type="string">
+    JWT refresh token for obtaining future access tokens
+  </ResponseField>
+  
+  <ResponseField name="expires" type="string">
+    Token expiration timestamp (ISO 8601)
+  </ResponseField>
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/auth/refresh-tokens \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTczODg0NTY1MiwiZXhwIjoxNzQxNDM3NjUyfQ.6k8yzwDEfJXAg3Wq3l8ZqJd7aJd7aJd7aJd7aJd70"
+  }'
+```
+
+### Example Response
+
+```json 200 - OK
+{
+  "access": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJpYXQiOjE3Mzg4NDkyNTIsImV4cCI6MTczODg1Mjg1Mn0.rQ8sL2mN9fK3j8sL2mN9fK3j8sL2mN9fK3j8sL2m",
+    "expires": "2026-02-06T16:49:10.722Z"
+  },
+  "refresh": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTczODg0OTI1MiwiZXhwIjoxNzQxNDQxMjUyfQ.mN9fK3j8sL2mN9fK3j8sL2mN9fK3j8sL2mN9fK3j",
+    "expires": "2026-03-09T15:19:10.722Z"
+  }
+}
+```
+
+### Error Responses
+
+```json 401 - Unauthorized
+{
+  "code": 401,
+  "message": "Please authenticate"
+}
+```
+
+```json 401 - Unauthorized
+{
+  "code": 401,
+  "message": "Invalid refresh token"
+}
+```
+
+```json 404 - Not Found
+{
+  "code": 404,
+  "message": "Refresh token not found"
+}
+```
+
+<Note>
+  Both the access and refresh tokens are rotated when you refresh. Store the new refresh token and use it for subsequent refresh requests.
+</Note>

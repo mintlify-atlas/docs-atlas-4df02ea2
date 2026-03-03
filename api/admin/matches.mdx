@@ -1,0 +1,240 @@
+---
+title: "Admin - Manage Matches"
+api: "GET /v1/admin/teamMatches"
+description: "Admin endpoint to list and manage matches"
+---
+
+Retrieve a paginated and filterable list of all matches in the system. This endpoint is restricted to admin users only.
+
+## Authentication
+
+This endpoint requires admin authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Number of matches per page
+</ParamField>
+
+<ParamField query="team_name" type="string">
+  Filter by team name (partial match)
+</ParamField>
+
+<ParamField query="city" type="string">
+  Filter by city where the match is played
+</ParamField>
+
+<ParamField query="ground" type="string">
+  Filter by ground/venue name
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by match status. Options:
+  - `scheduled`
+  - `live`
+  - `completed`
+  - `abandoned`
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of match objects
+  
+  <ResponseField name="id" type="string">
+    Match ID
+  </ResponseField>
+  
+  <ResponseField name="matchNumber" type="string">
+    Match number or identifier
+  </ResponseField>
+  
+  <ResponseField name="team1" type="object">
+    First team details
+    
+    <ResponseField name="id" type="string">
+      Team ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Team name
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="team2" type="object">
+    Second team details
+    
+    <ResponseField name="id" type="string">
+      Team ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Team name
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="venue" type="string">
+    Match venue/ground
+  </ResponseField>
+  
+  <ResponseField name="city" type="string">
+    City where match is played
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Match status (scheduled, live, completed, abandoned)
+  </ResponseField>
+  
+  <ResponseField name="matchType" type="string">
+    Type of match (T20, ODI, Test, etc.)
+  </ResponseField>
+  
+  <ResponseField name="startTime" type="string">
+    Scheduled start time
+  </ResponseField>
+  
+  <ResponseField name="endTime" type="string">
+    Actual end time (if completed)
+  </ResponseField>
+  
+  <ResponseField name="winner" type="object">
+    Winning team details (if completed)
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    Match creation timestamp
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of matches
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/admin/teamMatches?page=1&limit=20&status=completed&city=Karachi' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "results": [
+    {
+      "id": "60a7f8c8d5f3e2001f8e4e8a",
+      "matchNumber": "M001",
+      "team1": {
+        "id": "60a7f8c8d5f3e2001f8e4e8b",
+        "name": "Karachi Kings"
+      },
+      "team2": {
+        "id": "60a7f8c8d5f3e2001f8e4e8c",
+        "name": "Lahore Qalandars"
+      },
+      "venue": "National Stadium",
+      "city": "Karachi",
+      "status": "completed",
+      "matchType": "T20",
+      "startTime": "2024-01-15T15:00:00.000Z",
+      "endTime": "2024-01-15T18:30:00.000Z",
+      "winner": {
+        "id": "60a7f8c8d5f3e2001f8e4e8b",
+        "name": "Karachi Kings"
+      },
+      "createdAt": "2024-01-10T10:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "totalPages": 12,
+  "totalResults": 234
+}
+```
+
+</ResponseExample>
+
+## Delete Match
+
+Admins can delete a match using:
+
+```bash
+DELETE /v1/admin/matches/:matchId
+```
+
+### Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  The unique identifier of the match to delete
+</ParamField>
+
+### Response
+
+Returns `204 No Content` on successful deletion.
+
+### Example
+
+```bash cURL
+curl --request DELETE \
+  --url 'https://api.cricpr.com/v1/admin/matches/60a7f8c8d5f3e2001f8e4e8a' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN'
+```
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403 Forbidden">
+  User is not an admin
+  
+  ```json
+  {
+    "code": 403,
+    "message": "Admin access required"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  Match not found
+  
+  ```json
+  {
+    "code": 404,
+    "message": "Match not found"
+  }
+  ```
+</ResponseField>

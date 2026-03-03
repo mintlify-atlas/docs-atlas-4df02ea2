@@ -1,0 +1,201 @@
+---
+title: "Register Teams"
+api: "POST /v1/matches/{matchId}/registerTeam"
+---
+
+Register team players, captains, scorers, and wicket keepers for a match. Supports both regular players and guest players.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  Match ID (MongoDB ObjectId)
+</ParamField>
+
+## Request Body
+
+<ParamField body="teamAPlayers" type="array" default={[]}>
+  Array of regular player IDs for Team A
+</ParamField>
+
+<ParamField body="teamBPlayers" type="array" default={[]}>
+  Array of regular player IDs for Team B
+</ParamField>
+
+<ParamField body="teamAGuestPlayers" type="array" default={[]}>
+  Array of guest player names for Team A (strings)
+  - Guest players are created as Player documents without user accounts
+  - Guest players have `userId: null` and `isGuest: true`
+  - Names should be provided as simple strings (e.g., ["John Doe", "Jane Smith"])
+</ParamField>
+
+<ParamField body="teamBGuestPlayers" type="array" default={[]}>
+  Array of guest player names for Team B (strings)
+</ParamField>
+
+<ParamField body="teamACaptainId" type="string">
+  Captain ID for Team A (must be from `teamAPlayers`, not guest players)
+</ParamField>
+
+<ParamField body="teamBCaptainId" type="string">
+  Captain ID for Team B (must be from `teamBPlayers`, not guest players)
+</ParamField>
+
+<ParamField body="teamAScorerId" type="string">
+  Scorer ID for Team A (must be from `teamAPlayers`, not guest players)
+</ParamField>
+
+<ParamField body="teamBScorerId" type="string">
+  Scorer ID for Team B (must be from `teamBPlayers`, not guest players)
+</ParamField>
+
+<ParamField body="teamAWicketKeeperId" type="string">
+  Wicket keeper ID for Team A (can be regular player or guest player with format `guest_<index>`)
+</ParamField>
+
+<ParamField body="teamBWicketKeeperId" type="string">
+  Wicket keeper ID for Team B (can be regular player or guest player with format `guest_<index>`)
+</ParamField>
+
+## Validation Rules
+
+### Player Count
+- Each team must have at least 1 player (regular or guest combined)
+- `(teamAPlayers.length + teamAGuestPlayers.length) >= 1`
+- `(teamBPlayers.length + teamBGuestPlayers.length) >= 1`
+
+### Captain and Scorer Restrictions
+- **Captain must be a regular player** (from `teamAPlayers` or `teamBPlayers`)
+- **Scorer must be a regular player** (from `teamAPlayers` or `teamBPlayers`)
+- Guest players cannot be captains or scorers
+
+### Guest Player Format
+- Guest player names are provided as strings in the request
+- They are automatically converted to Player documents with:
+  - `userId`: `null`
+  - `isGuest`: `true`
+  - `shortName`: provided name
+  - `battingStyle`: `none`
+  - `bowlingStyle`: `none`
+  - `status`: `active`
+
+## Response
+
+Returns the updated Match object with registered teams.
+
+<ResponseField name="_id" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="teamAInstanceId" type="object">
+  Team A instance
+  <ResponseField name="_id" type="string">
+    Team instance ID
+  </ResponseField>
+  <ResponseField name="players" type="array">
+    Array of player IDs (includes both regular and guest player IDs)
+  </ResponseField>
+  <ResponseField name="captainId" type="string">
+    Captain player ID (regular player only)
+  </ResponseField>
+  <ResponseField name="scorerId" type="string">
+    Scorer player ID (regular player only)
+  </ResponseField>
+  <ResponseField name="wicketKeeperId" type="string">
+    Wicket keeper player ID
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="teamBInstanceId" type="object">
+  Team B instance (same structure as teamAInstanceId)
+</ResponseField>
+
+<ResponseField name="teamsRegistered" type="boolean">
+  Set to `true` after successful registration
+</ResponseField>
+
+## Guest Player Notes
+
+- Guest players appear in all match-related responses (scorecard, summary, innings)
+- Guest players are **NOT searchable** via player search endpoints
+- Guest players do **NOT appear** in team rosters (only in match instances)
+- Guest players use `shortName` for display in all responses
+- Guest players have `profilePicture: null`
+- Guest players are created per-match and are not reusable across matches
+
+## Example Request
+
+```bash
+# Register teams with both regular and guest players
+curl -X POST https://api.cricpr.com/v1/matches/688cbcf35ceca63a9cd62b6d/registerTeam \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "teamAPlayers": [
+      "507f1f77bcf86cd799439011",
+      "507f1f77bcf86cd799439012"
+    ],
+    "teamBPlayers": [
+      "507f1f77bcf86cd799439013",
+      "507f1f77bcf86cd799439014"
+    ],
+    "teamAGuestPlayers": [
+      "Guest Player 1",
+      "Guest Player 2"
+    ],
+    "teamBGuestPlayers": [
+      "Guest Player 3"
+    ],
+    "teamACaptainId": "507f1f77bcf86cd799439011",
+    "teamBCaptainId": "507f1f77bcf86cd799439013",
+    "teamAScorerId": "507f1f77bcf86cd799439011",
+    "teamBScorerId": "507f1f77bcf86cd799439013",
+    "teamAWicketKeeperId": "507f1f77bcf86cd799439012",
+    "teamBWicketKeeperId": "507f1f77bcf86cd799439014"
+  }'
+```
+
+```bash
+# Register teams with only regular players (backward compatible)
+curl -X POST https://api.cricpr.com/v1/matches/688cbcf35ceca63a9cd62b6d/registerTeam \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "teamAPlayers": [
+      "507f1f77bcf86cd799439011",
+      "507f1f77bcf86cd799439012"
+    ],
+    "teamBPlayers": [
+      "507f1f77bcf86cd799439013",
+      "507f1f77bcf86cd799439014"
+    ],
+    "teamACaptainId": "507f1f77bcf86cd799439011",
+    "teamBCaptainId": "507f1f77bcf86cd799439013"
+  }'
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid input data
+  - Team must have at least one player (regular or guest)
+  - Captain must be from regular players, not guest players
+  - Scorer must be from regular players, not guest players
+  - Captain/scorer must be in the respective team's player array
+  - Invalid player IDs
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Match not found or player IDs not found
+</ResponseField>

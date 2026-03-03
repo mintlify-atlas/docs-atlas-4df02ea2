@@ -1,0 +1,244 @@
+---
+title: Scoring system
+description: Understanding how CricPR tracks runs, wickets, overs, and player statistics
+---
+
+CricPR implements a comprehensive cricket scoring system that tracks every ball bowled, runs scored, wickets taken, and player performance metrics.
+
+## Hierarchical structure
+
+Scoring data is organized hierarchically:
+
+```
+Match
+  └─> Innings (one per team batting)
+       └─> Overs
+            └─> Balls
+```
+
+Each level tracks specific information relevant to that scope.
+
+## Innings
+
+An innings represents one team's batting turn.
+
+### Innings structure
+
+| Field | Description |
+|-------|-------------|
+| `matchId` | Reference to the parent match |
+| `battingTeamInstanceId` | Team currently batting |
+| `bowlingTeamInstanceId` | Team currently bowling |
+| `inningNumber` | Sequential number (auto-incremented) |
+| `status` | `inProgress` or `completed` |
+| `endTime` | When the innings finished |
+| `dayNumber` | For multi-day matches (1-5) |
+
+### Innings numbering
+
+Innings are automatically numbered sequentially within each match:
+
+- **First innings**: Inning 1 (Team A bats)
+- **Second innings**: Inning 2 (Team B bats)
+- **Third innings**: Inning 3 (Team A bats again, if applicable)
+- **Fourth innings**: Inning 4 (Team B chases, if applicable)
+
+<Info>
+The `inningNumber` is auto-incremented using a pre-save hook.
+</Info>
+
+## Overs
+
+An over consists of (typically) six legal deliveries bowled by one bowler.
+
+### Over structure
+
+```javascript
+{
+  overNumber: Number,           // Sequential over number in the innings
+  inningId: ObjectId,           // Reference to parent innings
+  bowlerId: ObjectId,           // Player bowling this over
+  ballCount: Number,            // Legal deliveries bowled (typically 6)
+  extrasCount: Number,          // Balls with extras (wides, no-balls)
+  wicketsInOver: Number,        // Wickets taken in this over
+  balls: [ObjectId]             // References to ball documents
+}
+```
+
+### Over tracking
+
+The system automatically:
+
+- Assigns the next sequential `overNumber`
+- Updates `ballCount` with legal deliveries only
+- Counts extras and wickets within the over
+- Maintains an array of ball references
+
+## Balls
+
+Each ball represents a single delivery bowled.
+
+### Ball structure
+
+A ball document captures extensive detail:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `overId` | Reference | Parent over |
+| `ballNumber` | Number | Position in over (1-6+) |
+| `bowlerId` | Reference | Player bowling |
+| `batsmanId` | Reference | Player on strike |
+| `nonStrikerId` | Reference | Player at non-striker end |
+| `runScored` | Number | Runs from the bat |
+| `extras` | Number | Extra runs |
+| `extraType` | String | `noBall`, `wide`, `bye`, `legBye`, or null |
+| `isFour` | Boolean | Boundary (4 runs) |
+| `isSix` | Boolean | Over boundary (6 runs) |
+| `isNoBall` | Boolean | Illegal delivery (no-ball) |
+| `isLegalDelivery` | Boolean | Whether ball counts toward over completion |
+| `isFreeHit` | Boolean | Free hit ball (follows no-ball) |
+| `wicketPlayerOut` | Reference | Player dismissed (if applicable) |
+| `dismissalId` | Reference | Dismissal details |
+| `nextBatsmanId` | Reference | Next player to bat after wicket |
+
+### Wagon wheel tracking
+
+For visualization purposes, balls can track shot direction:
+
+- `direction`: Textual description
+- `angle`: Shot angle in degrees
+- `distance`: Shot distance from stumps
+
+<Note>
+Wagon wheel tracking is optional and controlled by match configuration.
+</Note>
+
+## Extras
+
+Extras are runs not scored from the bat:
+
+- **Wide**: Ball bowled too wide for the batsman to reach
+- **No ball**: Illegal delivery (front foot, height, etc.)
+- **Bye**: Ball passes batsman and keeper without contact
+- **Leg bye**: Runs taken after ball hits batsman's body
+
+### Extra handling
+
+- Extras add to the team total
+- Wides and no-balls are not legal deliveries (over continues)
+- Byes and leg-byes count as legal deliveries
+- No-balls award the next ball as a free hit
+
+## Dismissals
+
+When a wicket falls, a dismissal record captures:
+
+- **Dismissal type**: Caught, bowled, LBW, run out, etc.
+- **Bowler**: Player who took the wicket (if applicable)
+- **Fielder**: Player who assisted (catches, run outs)
+- **Batsman out**: Player dismissed
+
+## Batting statistics
+
+For each player's batting performance:
+
+| Statistic | Description |
+|-----------|-------------|
+| `runScored` | Total runs scored |
+| `ballsFaced` | Deliveries faced |
+| `fours` | Number of 4-run boundaries |
+| `sixes` | Number of 6-run boundaries |
+| `strikeRate` | Runs per 100 balls |
+| `isNotOut` | Whether batsman remained not out |
+| `average` | Career batting average |
+| `hundreds` | Centuries scored (100+ runs) |
+| `fifties` | Half-centuries (50-99 runs) |
+| `thirties` | Scores of 30-49 runs |
+| `ducks` | Out for 0 runs |
+
+### Strike rate calculation
+
+```
+Strike Rate = (Runs Scored / Balls Faced) × 100
+```
+
+## Bowling statistics
+
+For each bowler's performance:
+
+| Statistic | Description |
+|-----------|-------------|
+| `oversBowled` | Complete overs bowled |
+| `ballsBowled` | Total legal deliveries |
+| `runConceded` | Runs scored off bowling |
+| `wickets` | Wickets taken |
+| `maidens` | Overs with 0 runs conceded |
+| `economy` | Runs conceded per over |
+| `wides` | Wide deliveries bowled |
+| `noBalls` | No-balls bowled |
+| `dots` | Dot balls (0 runs) |
+| `foursConceded` | Boundaries conceded |
+| `sixesConceded` | Sixes conceded |
+
+### Economy rate calculation
+
+```
+Economy Rate = Runs Conceded / Overs Bowled
+```
+
+## Fielding statistics
+
+Fielding contributions are tracked separately:
+
+- Catches taken
+- Run outs executed
+- Stumpings (for wicket keepers)
+
+These are linked through dismissal records.
+
+## Live scoring
+
+CricPR supports real-time match scoring:
+
+1. **Current innings** endpoint provides live data
+2. **Ball-by-ball updates** with automatic calculations
+3. **Over completion** triggers statistical updates
+4. **Innings completion** finalizes team scores
+
+<Tip>
+Use the `/matches/current` endpoint to fetch live scoring data.
+</Tip>
+
+## Scorecards
+
+Match scorecards aggregate:
+
+- Batting statistics for each player
+- Bowling figures for each bowler
+- Team totals and run rates
+- Fall of wickets
+- Partnership information
+
+## Player of the match
+
+After match completion, a player can be designated as player of the match based on:
+
+- Outstanding batting performance
+- Exceptional bowling figures
+- Match-winning contributions
+- All-round performance
+
+## Statistical aggregation
+
+CricPR automatically calculates:
+
+- **Player career stats**: Across all matches
+- **Tournament stats**: Within specific tournaments
+- **Team stats**: For team performance analysis
+- **Head-to-head stats**: Between specific opponents
+
+## Related concepts
+
+- [Matches](/concepts/matches) - Understand the match structure containing innings
+- [Teams and players](/concepts/teams-and-players) - Learn about player profiles and statistics
+- [Guest players](/concepts/guest-players) - See how guest players are included in statistics

@@ -1,0 +1,114 @@
+---
+title: 'Update Player'
+api: 'PATCH /v1/players/:playerId'
+---
+
+Update a player's profile.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="playerId" type="string" required>
+  The ID of the player to update
+</ParamField>
+
+## Request Body
+
+At least one field must be provided.
+
+<ParamField body="userId" type="string">
+  User ID
+</ParamField>
+
+<ParamField body="battingStyle" type="string">
+  Batting style
+</ParamField>
+
+<ParamField body="bowlingStyle" type="string">
+  Bowling style
+</ParamField>
+
+<ParamField body="primaryRole" type="string">
+  Primary role
+</ParamField>
+
+<ParamField body="shortName" type="string">
+  Short name
+</ParamField>
+
+<ParamField body="isVerified" type="boolean">
+  Verification status
+</ParamField>
+
+<ParamField body="status" type="string">
+  Player status
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Player ID
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  Updated user ID
+</ResponseField>
+
+<ResponseField name="battingStyle" type="string">
+  Updated batting style
+</ResponseField>
+
+<ResponseField name="bowlingStyle" type="string">
+  Updated bowling style
+</ResponseField>
+
+<ResponseField name="primaryRole" type="string">
+  Updated primary role
+</ResponseField>
+
+<ResponseField name="shortName" type="string">
+  Updated short name
+</ResponseField>
+
+<ResponseField name="isVerified" type="boolean">
+  Updated verification status
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Updated player status
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH https://api.cricpr.com/v1/players/688cb06818c2232abefa254e \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "battingStyle": "Right-hand bat",
+    "primaryRole": "Batsman",
+    "isVerified": true
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688cb06818c2232abefa254e",
+  "userId": "6887d2f86e607c4c48b33c65",
+  "battingStyle": "Right-hand bat",
+  "bowlingStyle": "Slow left-arm orthodox",
+  "primaryRole": "Batsman",
+  "shortName": "Johnny",
+  "isVerified": true,
+  "status": "active"
+}
+```
+</ResponseExample>

@@ -1,122 +1,192 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "CricPR API",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#2E7D32",
+    "light": "#66BB6A",
+    "dark": "#1B5E20"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/asharali-codefied/cric-pr-backend"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/asharali-codefied/cric-pr-backend"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Getting Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "authentication"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/matches",
+              "concepts/tournaments",
+              "concepts/teams-and-players",
+              "concepts/scoring-system",
+              "concepts/guest-players"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "guides/creating-matches",
+              "guides/live-scoring",
+              "guides/statistics",
+              "guides/offline-sync",
+              "guides/real-time-updates"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Authentication",
             "pages": [
-              "api-reference/introduction"
+              "api/auth/register",
+              "api/auth/login",
+              "api/auth/refresh-token",
+              "api/auth/logout"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Matches",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/matches/create",
+              "api/matches/get",
+              "api/matches/list",
+              "api/matches/register-teams",
+              "api/matches/scorecard",
+              "api/matches/summary",
+              "api/matches/start",
+              "api/matches/end"
+            ]
+          },
+          {
+            "group": "Tournaments",
+            "pages": [
+              "api/tournaments/create",
+              "api/tournaments/get",
+              "api/tournaments/list",
+              "api/tournaments/update",
+              "api/tournaments/delete"
+            ]
+          },
+          {
+            "group": "Teams",
+            "pages": [
+              "api/teams/create",
+              "api/teams/get",
+              "api/teams/list",
+              "api/teams/update",
+              "api/teams/delete"
+            ]
+          },
+          {
+            "group": "Players",
+            "pages": [
+              "api/players/create",
+              "api/players/get",
+              "api/players/search",
+              "api/players/update",
+              "api/players/delete"
+            ]
+          },
+          {
+            "group": "Innings",
+            "pages": [
+              "api/innings/get",
+              "api/innings/current",
+              "api/innings/update"
+            ]
+          },
+          {
+            "group": "Overs & Balls",
+            "pages": [
+              "api/overs/create",
+              "api/overs/get",
+              "api/balls/record",
+              "api/balls/update"
+            ]
+          },
+          {
+            "group": "Statistics",
+            "pages": [
+              "api/stats/player",
+              "api/stats/team",
+              "api/stats/match"
+            ]
+          },
+          {
+            "group": "Notifications",
+            "pages": [
+              "api/notifications/list",
+              "api/notifications/mark-read"
+            ]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api/users/get-profile",
+              "api/users/update-profile",
+              "api/users/delete-account"
+            ]
+          },
+          {
+            "group": "Admin",
+            "pages": [
+              "api/admin/users",
+              "api/admin/matches",
+              "api/admin/settings"
+            ]
+          },
+          {
+            "group": "Sync",
+            "pages": [
+              "api/sync/offline-sync",
+              "api/sync/batch-sync"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Infrastructure",
+        "groups": [
+          {
+            "group": "Deployment",
+            "pages": [
+              "infrastructure/environment-setup",
+              "infrastructure/docker",
+              "infrastructure/pm2-cluster"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "infrastructure/architecture-overview",
+              "infrastructure/database-schema",
+              "infrastructure/redis-caching",
+              "infrastructure/websockets"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

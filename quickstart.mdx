@@ -1,80 +1,317 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with CricPR API in under 5 minutes
 ---
 
-## Get started in three steps
+# Quick start guide
 
-Get your documentation site running locally and make your first customization.
+This guide will walk you through creating your first match using the CricPR API. You'll register an account, authenticate, create teams, and set up a match.
 
-### Step 1: Set up your local environment
+## Prerequisites
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+You'll need:
+- A REST client (cURL, Postman, or similar)
+- Basic knowledge of REST APIs and JSON
 
-### Step 2: Deploy your changes
+<Info>
+  All examples use `https://api.cricpr.com/v1` as the base URL. Replace this with your server URL if using a different environment.
+</Info>
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Step 1: Register an account
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+Create a new user account to get started:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "role": "user"
+  }'
+```
 
-### Step 3: Go live
+```javascript JavaScript
+const response = await fetch('https://api.cricpr.com/v1/auth/register', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    name: 'John Doe',
+    email: 'john@example.com',
+    password: 'password123',
+    role: 'user'
+  })
+});
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+const data = await response.json();
+const accessToken = data.tokens.access.token;
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.cricpr.com/v1/auth/register',
+    json={
+        'name': 'John Doe',
+        'email': 'john@example.com',
+        'password': 'password123',
+        'role': 'user'
+    }
+)
+
+data = response.json()
+access_token = data['tokens']['access']['token']
+```
+</CodeGroup>
+
+<Note>
+  **Password requirements**: Minimum 8 characters with at least one number and one letter
+</Note>
+
+The response includes your user data and authentication tokens:
+
+```json
+{
+  "user": {
+    "id": "507f1f77bcf86cd799439011",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "role": "user"
+  },
+  "tokens": {
+    "access": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expires": "2025-02-07T13:49:10.722Z"
+    },
+    "refresh": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expires": "2025-03-09T13:19:10.722Z"
+    }
+  }
+}
+```
+
+<Tip>
+  Save your access token - you'll need it for all authenticated requests!
+</Tip>
+
+## Step 2: Create teams
+
+Before creating a match, you need two teams. Let's create Team A:
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/teams \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "name": "Mumbai Warriors",
+    "location": "Mumbai, India"
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "688a38f0fea3456a96402a30",
+  "name": "Mumbai Warriors",
+  "location": "Mumbai, India",
+  "createdBy": "507f1f77bcf86cd799439011",
+  "players": []
+}
+```
+
+Create Team B using the same endpoint with different details.
+
+<Warning>
+  Keep track of both team IDs - you'll need them to create a match!
+</Warning>
+
+## Step 3: Create a match
+
+Now let's create a T20 match between your two teams:
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/matches \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "teamA": "688a38f0fea3456a96402a30",
+    "teamB": "688cb3a018c2232abefa2603",
+    "title": "Mumbai Warriors vs Delhi Capitals",
+    "startdatetime": "2025-08-01T18:00:00Z",
+    "location": "Mumbai",
+    "matchCategory": "T20 League",
+    "overs": 20,
+    "matchType": "t20",
+    "ballType": "leather",
+    "pitchType": "turf",
+    "noOfDays": 1,
+    "oversPerBowler": 4
+  }'
+```
+
+```javascript JavaScript
+const match = await fetch('https://api.cricpr.com/v1/matches', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`
+  },
+  body: JSON.stringify({
+    teamA: '688a38f0fea3456a96402a30',
+    teamB: '688cb3a018c2232abefa2603',
+    title: 'Mumbai Warriors vs Delhi Capitals',
+    startdatetime: '2025-08-01T18:00:00Z',
+    location: 'Mumbai',
+    matchCategory: 'T20 League',
+    overs: 20,
+    matchType: 't20',
+    ballType: 'leather',
+    pitchType: 'turf',
+    noOfDays: 1,
+    oversPerBowler: 4
+  })
+});
+
+const matchData = await match.json();
+```
+</CodeGroup>
+
+### Match format validation
+
+The API enforces ICC rules for standard formats:
+
+<CardGroup cols={3}>
+  <Card title="T20">
+    - 20 overs per innings
+    - 1 day
+    - 4 overs per bowler
+  </Card>
+  <Card title="ODI">
+    - 50 overs per innings
+    - 1 day
+    - 10 overs per bowler
+  </Card>
+  <Card title="Test">
+    - Unlimited overs
+    - 2-5 days
+    - Unlimited overs per bowler (set to 0)
+  </Card>
+</CardGroup>
+
+For custom formats, use `matchType: "limitedOvers"` and specify your own rules.
+
+## Step 4: Register team players
+
+Before starting the match, register players for both teams:
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/matches/MATCH_ID/registerTeam \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "teamAPlayers": [
+      "507f1f77bcf86cd799439011",
+      "507f1f77bcf86cd799439012"
+    ],
+    "teamBPlayers": [
+      "507f1f77bcf86cd799439013",
+      "507f1f77bcf86cd799439014"
+    ],
+    "teamACaptainId": "507f1f77bcf86cd799439011",
+    "teamBCaptainId": "507f1f77bcf86cd799439013",
+    "teamAScorerId": "507f1f77bcf86cd799439011",
+    "teamBScorerId": "507f1f77bcf86cd799439013"
+  }'
+```
+
+## Step 5: Start the match
+
+Once teams are registered, start the match with toss details:
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/matches/MATCH_ID/start \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "tossWinnerTeamInstanceId": "688cbcf15ceca63a9cd62b69",
+    "tossDecision": "bat"
+  }'
+```
+
+<Info>
+  **Toss decision**: Use `"bat"` if the toss winner chose to bat first, or `"bowl"` to field first
+</Info>
+
+## Step 6: Record scoring
+
+Now you can start recording ball-by-ball action! Here's how to record a boundary:
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/balls \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{
+    "matchId": "688cbcf35ceca63a9cd62b6d",
+    "inningsId": "688cbcf35ceca63a9cd62b6e",
+    "overId": "688cbcf35ceca63a9cd62b6f",
+    "batsmanId": "507f1f77bcf86cd799439011",
+    "bowlerId": "507f1f77bcf86cd799439013",
+    "runs": 4,
+    "ballType": "normal",
+    "boundary": true
+  }'
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="Authentication Guide"
+    icon="lock"
+    href="/authentication"
+  >
+    Learn about JWT tokens, refresh tokens, and security best practices
+  </Card>
+  <Card
+    title="Match API Reference"
+    icon="book"
+    href="/api/matches/create"
+  >
+    Explore all match management endpoints and options
+  </Card>
+  <Card
+    title="Live Scoring"
+    icon="bolt"
+    href="/api/balls/record"
+  >
+    Deep dive into ball-by-ball scoring mechanics
+  </Card>
+  <Card
+    title="Statistics"
+    icon="chart-bar"
+    href="/api/stats/player"
+  >
+    Access match summaries, scorecards, and player stats
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Need help?
+
+If you run into any issues:
+
+1. Check that your access token is valid and included in the `Authorization` header
+2. Verify that team IDs and player IDs are correct
+3. Ensure match format rules are followed (T20 must have 20 overs, etc.)
+4. Review the [Authentication](/authentication) guide for token troubleshooting
+
+<Tip>
+  Use the `/v1/matches/MATCH_ID/summary` endpoint to get a complete overview of your match at any time.
+</Tip>

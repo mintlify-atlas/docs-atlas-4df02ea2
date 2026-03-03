@@ -1,0 +1,263 @@
+---
+title: Guest players
+description: Understanding how to add temporary players to matches without requiring user accounts
+---
+
+Guest players allow teams to include additional players in specific matches without requiring those players to create CricPR accounts. This feature is useful for casual matches, substitutes, or players who participate infrequently.
+
+## What are guest players?
+
+Guest players are Player documents with special characteristics:
+
+- **No user account**: `userId` field is `null`
+- **Match-specific**: Created only for individual matches
+- **Not searchable**: Excluded from player search results
+- **Not in team rosters**: Don't appear in permanent team listings
+- **Limited roles**: Cannot be captains or scorers
+- **Marked as guests**: `isGuest` field is `true`
+
+<Info>
+Guest players appear in all match-related responses but are excluded from player search and team roster endpoints.
+</Info>
+
+## Creating guest players
+
+Guest players are created during team registration for a match.
+
+### Registration request
+
+When registering teams, you can include guest players alongside regular players:
+
+```json
+{
+  "teamAPlayers": ["player1Id", "player2Id"],
+  "teamBPlayers": ["player3Id", "player4Id"],
+  "teamAGuestPlayers": ["John Smith", "Mike Wilson"],
+  "teamBGuestPlayers": ["Sarah Johnson"],
+  "teamACaptainId": "player1Id",
+  "teamBCaptainId": "player3Id",
+  "teamAScorerId": "player1Id",
+  "teamBScorerId": "player3Id"
+}
+```
+
+### Guest player fields
+
+| Field | Value | Description |
+|-------|-------|-------------|
+| `teamAGuestPlayers` | `string[]` | Names of guest players for Team A |
+| `teamBGuestPlayers` | `string[]` | Names of guest players for Team B |
+
+<Note>
+All fields are optional and default to empty arrays if not provided.
+</Note>
+
+## Validation rules
+
+The system enforces several validation rules when registering teams with guest players:
+
+### Minimum players per team
+
+Each team must have at least one player (regular or guest):
+
+```javascript
+(teamAPlayers.length + teamAGuestPlayers.length) >= 1
+(teamBPlayers.length + teamBGuestPlayers.length) >= 1
+```
+
+### Captain and scorer restrictions
+
+<Warning>
+Captains and scorers must be regular players, not guest players.
+</Warning>
+
+The following validation applies:
+
+- `teamACaptainId` must be in `teamAPlayers` array
+- `teamBCaptainId` must be in `teamBPlayers` array
+- `teamAScorerId` must be in `teamAPlayers` array
+- `teamBScorerId` must be in `teamBPlayers` array
+
+### Wicket keeper flexibility
+
+<Check>
+Wicket keepers can be either regular players or guest players.
+</Check>
+
+## Guest player data structure
+
+When created, guest players have:
+
+```javascript
+{
+  userId: null,
+  isGuest: true,
+  shortName: "Guest Player Name",
+  status: "active",
+  battingStyle: "none",
+  bowlingStyle: "none"
+}
+```
+
+## Guest players in responses
+
+Guest players appear in match-related endpoints but with limited information.
+
+### Match details
+
+When fetching match details, guest players are included in team instances:
+
+```json
+{
+  "teamAInstanceId": {
+    "players": [
+      {
+        "_id": "guestPlayerId",
+        "shortName": "John Smith",
+        "userId": null,
+        "isGuest": true,
+        "battingStyle": "none",
+        "bowlingStyle": "none"
+      }
+    ]
+  }
+}
+```
+
+### Scorecard data
+
+Guest players appear in batting and bowling statistics:
+
+**Batting stats:**
+
+```json
+{
+  "playerName": "John Smith",
+  "runs": 45,
+  "balls": 32,
+  "fours": 4,
+  "sixes": 1,
+  "strikeRate": 140.62
+}
+```
+
+**Bowling stats:**
+
+```json
+{
+  "playerName": "John Smith",
+  "overs": 4.0,
+  "maidens": 1,
+  "runs": 28,
+  "wickets": 2,
+  "economy": 7.00
+}
+```
+
+<Note>
+Player names for guest players always use the `shortName` field since they have no user account.
+</Note>
+
+### Profile pictures
+
+Guest players always have:
+
+- `profilePicture: null`
+
+Regular players can have profile pictures from their user accounts.
+
+## Where guest players appear
+
+Guest players are included in:
+
+- ✅ Match details (`GET /matches/:matchId`)
+- ✅ Match scorecard (`GET /matches/:matchId/scorecard`)
+- ✅ Match summary (`GET /matches/:matchId/summary`)
+- ✅ Innings details (`GET /innings/:inningId`)
+- ✅ Current match data (`GET /matches/current`)
+- ✅ Scheduled matches (`GET /matches?scheduled=true`)
+
+## Where guest players don't appear
+
+Guest players are excluded from:
+
+- ❌ Player search (`GET /players/search`)
+- ❌ General player listings (`GET /players`)
+- ❌ Team rosters (only permanent team members shown)
+
+<Info>
+This exclusion ensures guest players remain match-specific and don't clutter global player databases.
+</Info>
+
+## Player name display logic
+
+The system uses this fallback logic for displaying player names:
+
+```javascript
+playerName = player.shortName || player.userId?.name || 'Guest Player'
+```
+
+This ensures:
+
+- **Regular players**: Use `shortName` if available, otherwise `userId.name`
+- **Guest players**: Always use `shortName` (set during creation)
+
+## Use cases for guest players
+
+Guest players are ideal for:
+
+### Casual matches
+
+Friendly games where not all participants have CricPR accounts.
+
+### Substitute players
+
+Temporary replacements for unavailable regular players.
+
+### Tournament flexibility
+
+Allowing teams to bring additional players for specific tournament matches.
+
+### Trial matches
+
+Testing new players before adding them to the permanent roster.
+
+## Backward compatibility
+
+<Check>
+All guest player changes are backward compatible with existing matches.
+</Check>
+
+- Existing matches without guest players continue to work normally
+- The guest player fields are optional
+- Matches can still be created with only regular players
+
+## Limitations
+
+Guest players cannot:
+
+- Be designated as captains
+- Be designated as scorers
+- Appear in player search results
+- Be added to permanent team rosters
+- Be reused across multiple matches (new guest player created each time)
+
+<Warning>
+Guest players are match-specific. To use the same person in multiple matches, create a new guest player entry for each match or have them create a CricPR account.
+</Warning>
+
+## Migration notes
+
+When implementing guest player functionality:
+
+1. Guest players are created per-match and not reusable
+2. Validation ensures captains/scorers are always regular players
+3. No changes needed to existing player or match documents
+4. Frontend should handle `userId: null` for guest players
+5. Display logic should check for `isGuest` flag when rendering player information
+
+## Related concepts
+
+- [Matches](/concepts/matches) - Learn about team registration and match structure
+- [Teams and players](/concepts/teams-and-players) - Understand regular player management
+- [Scoring system](/concepts/scoring-system) - See how guest player statistics are tracked

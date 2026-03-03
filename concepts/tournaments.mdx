@@ -1,0 +1,147 @@
+---
+title: Tournaments
+description: Understanding tournament structure, formats, and team management in CricPR
+---
+
+Tournaments organize multiple teams into structured competitions with various formats. CricPR supports several tournament formats and provides comprehensive management features.
+
+## Tournament structure
+
+A tournament consists of:
+
+- **Basic information**: Name, description, city, dates
+- **Visual assets**: Cover image and banner
+- **Team management**: Team registration and capacity tracking
+- **Format configuration**: Competition structure (round robin, knockout, etc.)
+- **Organizer**: User or player who created the tournament
+- **Status tracking**: Current state of the tournament
+- **Entry details**: Registration deadline, entry fee, and prizes
+
+## Tournament formats
+
+CricPR supports four tournament formats:
+
+### Round robin
+
+Every team plays against every other team at least once.
+
+- **Best for**: Small to medium tournaments (4-8 teams)
+- **Ensures**: All teams get equal opportunities
+- **Determines winner by**: Points table standings
+
+### Knockout
+
+Single-elimination format where losing teams are immediately eliminated.
+
+- **Best for**: Large tournaments or time constraints
+- **Ensures**: Quick progression to finals
+- **Determines winner by**: Final match result
+
+### Hybrid
+
+Combines group stages (round robin) with knockout playoffs.
+
+- **Best for**: Large tournaments (16+ teams)
+- **Ensures**: Balance between fairness and excitement
+- **Determines winner by**: Knockout playoffs after group stage
+
+### Point based
+
+Custom point allocation system across multiple match stages.
+
+- **Best for**: Unique tournament structures
+- **Ensures**: Flexible competition design
+- **Determines winner by**: Total accumulated points
+
+<Tip>
+Choose your tournament format based on the number of teams, available time, and desired competition structure.
+</Tip>
+
+## Tournament statuses
+
+Tournaments progress through different stages:
+
+| Status | Description |
+|--------|-------------|
+| `upcoming` | Tournament is scheduled, teams can register |
+| `ongoing` | Tournament has started, matches in progress |
+| `completed` | All matches finished, winner determined |
+| `cancelled` | Tournament was cancelled |
+
+## Team registration
+
+Tournaments manage team participation through:
+
+- **Maximum teams**: Set capacity for the tournament
+- **Current teams count**: Automatic tracking of registered teams
+- **Team IDs**: Array of registered team references
+- **Registration deadline**: Cut-off date for team sign-ups
+- **Entry fee**: Optional fee for participation
+
+### Registration constraints
+
+<Warning>
+Once a tournament reaches `maxTeams`, no additional teams can register.
+</Warning>
+
+The system automatically:
+- Increments `currentTeamsCount` when teams join
+- Validates against `maxTeams` before allowing registration
+- Prevents duplicate team registrations
+
+## Visibility and access
+
+Tournaments can be:
+
+- **Public** (`isPublic: true`): Visible to all users, open registration
+- **Private** (`isPublic: false`): Invitation-only, restricted visibility
+
+## Tournament organizers
+
+Tournaments support two organizer types:
+
+1. **User organizers**: Regular users managing tournaments
+2. **Player organizers**: Players organizing competitions
+
+The `organizerType` field determines which collection the `organizerId` references.
+
+## Winner determination
+
+Once a tournament completes:
+
+- The winning team is recorded in `winnerTeamId`
+- Winner is determined based on the tournament format
+- Status changes to `completed`
+
+## Date validation
+
+The system enforces:
+
+<Check>
+`endDate` must be after `startDate`
+</Check>
+
+This validation runs automatically before saving tournament documents.
+
+## Tournament matches
+
+Matches within tournaments:
+
+- Have `matchType` set to `"tournament"`
+- Are linked to the tournament structure
+- Contribute to points tables and standings
+- Follow the tournament's format rules
+
+## Prizes and incentives
+
+Tournaments can specify:
+
+- **Prize**: Description of rewards (text field)
+- **Entry fee**: Amount required to participate (numeric, minimum 0)
+
+These fields help organizers communicate tournament value to potential participants.
+
+## Related concepts
+
+- [Matches](/concepts/matches) - Learn how tournament matches are structured
+- [Teams and players](/concepts/teams-and-players) - Understand team composition and player roles

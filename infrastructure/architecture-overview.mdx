@@ -1,0 +1,457 @@
+---
+title: 'Architecture Overview'
+description: 'Understand the CricPR API system architecture and design patterns'
+icon: 'diagram-project'
+---
+
+## Overview
+
+The CricPR API is built on a modern, scalable architecture designed for high-performance cricket match management. The system employs a clustered Node.js backend with distributed caching, real-time WebSocket communication, and robust data persistence.
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Load Balancer                        │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                      PM2 Cluster Manager                    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Worker 1 │  │ Worker 2 │  │ Worker 3 │  │ Worker N │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+└─────────────────────────────────────────────────────────────┘
+           │                │                │
+           ▼                ▼                ▼
+    ┌───────────┐    ┌───────────┐    ┌──────────┐
+    │  MongoDB  │    │   Redis   │    │ Socket.IO│
+    │ (Primary) │    │  (Cache)  │    │(Real-time)│
+    └───────────┘    └───────────┘    └──────────┘
+```
+
+## Core Components
+
+### 1. Application Layer
+
+<CardGroup cols={2}>
+  <Card title="Express.js" icon="server">
+    RESTful API framework handling HTTP requests
+  </Card>
+  <Card title="PM2 Cluster" icon="circle-nodes">
+    Process manager for horizontal scaling
+  </Card>
+  <Card title="Socket.IO" icon="plug">
+    Real-time bidirectional communication
+  </Card>
+  <Card title="Passport.js" icon="shield">
+    Authentication and authorization
+  </Card>
+</CardGroup>
+
+### 2. Data Layer
+
+<CardGroup cols={2}>
+  <Card title="MongoDB" icon="database">
+    Primary NoSQL database for persistent storage
+  </Card>
+  <Card title="Redis" icon="server">
+    In-memory cache for performance optimization
+  </Card>
+  <Card title="Mongoose" icon="code">
+    ODM for MongoDB with schema validation
+  </Card>
+  <Card title="IORedis" icon="bolt">
+    High-performance Redis client
+  </Card>
+</CardGroup>
+
+### 3. Service Layer
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key">
+    JWT-based token management
+  </Card>
+  <Card title="Email" icon="envelope">
+    SMTP integration for notifications
+  </Card>
+  <Card title="Payment" icon="credit-card">
+    Stripe integration for transactions
+  </Card>
+  <Card title="File Upload" icon="upload">
+    Cloudinary for media management
+  </Card>
+</CardGroup>
+
+## Request Flow
+
+<Steps>
+  <Step title="Client Request">
+    Client sends HTTP/WebSocket request to the API
+  </Step>
+
+  <Step title="Load Balancing">
+    PM2 distributes request to available worker using round-robin
+  </Step>
+
+  <Step title="Authentication">
+    Passport middleware validates JWT token
+    
+    ```javascript
+    const auth = passport.authenticate('jwt', { session: false });
+    ```
+  </Step>
+
+  <Step title="Cache Check">
+    Redis service checks for cached response
+    
+    ```javascript
+    const cached = await redisService.get(cacheKey);
+    if (cached) return cached;
+    ```
+  </Step>
+
+  <Step title="Business Logic">
+    Controller processes request and interacts with services
+  </Step>
+
+  <Step title="Database Query">
+    Mongoose queries MongoDB with optimized indexes
+  </Step>
+
+  <Step title="Cache Update">
+    Response is cached in Redis for future requests
+    
+    ```javascript
+    await redisService.set(cacheKey, response, ttl);
+    ```
+  </Step>
+
+  <Step title="Response">
+    JSON response sent back to client
+  </Step>
+</Steps>
+
+## Cluster Architecture
+
+### Master-Worker Model
+
+The application uses Node.js cluster module with PM2:
+
+```javascript
+if (cluster.isMaster) {
+  // Master process
+  - Fork workers based on CPU cores
+  - Monitor worker health
+  - Handle graceful shutdowns
+  - Coordinate worker restarts
+} else {
+  // Worker process
+  - Handle client requests
+  - Connect to MongoDB/Redis
+  - Process business logic
+  - Report health to master
+}
+```
+
+### Worker Distribution
+
+<Tabs>
+  <Tab title="Production">
+    ```javascript
+    // All CPU cores
+    instances: "max"
+    workers: os.cpus().length
+    ```
+  </Tab>
+  
+  <Tab title="Staging">
+    ```javascript
+    // Half of CPU cores
+    workers: Math.floor(os.cpus().length / 2)
+    ```
+  </Tab>
+  
+  <Tab title="Development">
+    ```javascript
+    // Single worker
+    workers: 1
+    ```
+  </Tab>
+</Tabs>
+
+## Database Architecture
+
+### MongoDB Collections
+
+The database schema includes 30+ collections:
+
+<AccordionGroup>
+  <Accordion title="User Management">
+    - `users` - User accounts and profiles
+    - `tokens` - JWT refresh tokens
+    - `roles` - Role-based access control
+    - `permissions` - Granular permissions
+  </Accordion>
+
+  <Accordion title="Cricket Domain">
+    - `players` - Player profiles and stats
+    - `teams` - Team information
+    - `teamInstances` - Match-specific team lineup
+    - `matches` - Match details and status
+  </Accordion>
+
+  <Accordion title="Match Statistics">
+    - `innings` - Innings data
+    - `overs` - Over-by-over tracking
+    - `balls` - Ball-by-ball details
+    - `battingStats` - Batting performance
+    - `bowlingStats` - Bowling figures
+    - `fieldingStats` - Fielding statistics
+  </Accordion>
+
+  <Accordion title="Tournament System">
+    - `tournaments` - Tournament details
+    - `tournamentStages` - Stage configuration
+    - `tournamentGroups` - Group management
+    - `tournamentMatches` - Tournament fixtures
+    - `tournamentPointsTable` - Standings
+  </Accordion>
+</AccordionGroup>
+
+### Indexing Strategy
+
+Optimized indexes for common queries:
+
+```javascript
+// Compound indexes for efficient queries
+matchSchema.index({ teamAInstanceId: 1, teamBInstanceId: 1, startdatetime: 1 });
+matchSchema.index({ status: 1, createdAt: -1 });
+
+// Reference indexes for joins
+userSchema.index({ email: 1 });
+playerSchema.index({ userId: 1 });
+tournamentSchema.index({ organizerId: 1, organizerType: 1 });
+```
+
+## Caching Strategy
+
+### Cache Layers
+
+```
+┌─────────────────────────────────────┐
+│         Application Memory          │ ← In-memory objects
+├─────────────────────────────────────┤
+│            Redis Cache              │ ← Shared cache
+├─────────────────────────────────────┤
+│          MongoDB Database           │ ← Persistent storage
+└─────────────────────────────────────┘
+```
+
+### Cache Patterns
+
+<CodeGroup>
+```javascript Cache-Aside
+// Check cache first
+const cached = await redisService.get(key);
+if (cached) return cached;
+
+// Query database if cache miss
+const data = await Model.find(query);
+
+// Update cache
+await redisService.set(key, data, ttl);
+return data;
+```
+
+```javascript Write-Through
+// Update database
+const doc = await Model.create(data);
+
+// Update cache
+await redisService.set(key, doc, ttl);
+
+return doc;
+```
+
+```javascript Cache Invalidation
+// Delete from database
+await Model.findByIdAndDelete(id);
+
+// Invalidate cache
+await redisService.del(`model:${id}`);
+await redisService.delPattern('model:list:*');
+```
+</CodeGroup>
+
+## Real-Time Architecture
+
+### WebSocket Communication
+
+```javascript
+Socket.IO Server
+    │
+    ├─── Namespace: /
+    │     │
+    │     ├─── Room: chat:{chatId}
+    │     ├─── Room: match:{matchId}
+    │     └─── Room: tournament:{tournamentId}
+    │
+    └─── Events:
+          - connection
+          - activeUsers
+          - join
+          - typing
+          - groupMessage
+          - privateMessage
+          - disconnect
+```
+
+### Event Broadcasting
+
+<CodeGroup>
+```javascript To All
+io.emit('activeUsers', users);
+```
+
+```javascript To Room
+io.to(chatId).emit('groupMessage', message);
+```
+
+```javascript To Specific Client
+socket.emit('privateMessage', message);
+```
+</CodeGroup>
+
+## Security Architecture
+
+<AccordionGroup>
+  <Accordion title="Authentication">
+    - JWT-based stateless authentication
+    - Access tokens (30 min expiry)
+    - Refresh tokens (30 day expiry)
+    - Password hashing with bcrypt
+  </Accordion>
+
+  <Accordion title="Authorization">
+    - Role-based access control (RBAC)
+    - Permission-based restrictions
+    - Resource ownership validation
+    - Dynamic policy enforcement
+  </Accordion>
+
+  <Accordion title="Data Protection">
+    - MongoDB sanitization
+    - XSS protection
+    - Rate limiting
+    - CORS configuration
+    - Helmet security headers
+  </Accordion>
+
+  <Accordion title="API Security">
+    - Request validation (Joi)
+    - Input sanitization
+    - SQL/NoSQL injection prevention
+    - Secure session management
+  </Accordion>
+</AccordionGroup>
+
+## Scalability Patterns
+
+### Horizontal Scaling
+
+```
+Application Tier:
+- Add more PM2 workers
+- Distribute across multiple servers
+- Use load balancer for distribution
+
+Database Tier:
+- MongoDB replica sets
+- Read replicas for queries
+- Sharding for large datasets
+
+Cache Tier:
+- Redis cluster mode
+- Distributed cache across nodes
+- Cache replication
+```
+
+### Vertical Scaling
+
+```
+- Increase server resources (CPU, RAM)
+- Optimize Node.js heap size
+- Tune MongoDB memory settings
+- Increase Redis memory allocation
+```
+
+## Design Patterns
+
+<CardGroup cols={2}>
+  <Card title="Repository Pattern" icon="box">
+    Abstraction layer for data access
+  </Card>
+  <Card title="Service Layer" icon="layer-group">
+    Business logic separation
+  </Card>
+  <Card title="Factory Pattern" icon="industry">
+    Object creation abstraction
+  </Card>
+  <Card title="Middleware Chain" icon="link">
+    Request processing pipeline
+  </Card>
+  <Card title="Observer Pattern" icon="eye">
+    Event-driven architecture
+  </Card>
+  <Card title="Singleton" icon="one">
+    Shared service instances
+  </Card>
+</CardGroup>
+
+## Monitoring and Observability
+
+### Health Checks
+
+```javascript
+// Worker health monitoring
+setInterval(() => {
+  const memUsage = process.memoryUsage();
+  const cpuUsage = process.cpuUsage();
+  
+  if (memUsage.heapUsed > threshold) {
+    logger.warn('High memory usage');
+  }
+}, 30000);
+```
+
+### Logging
+
+```javascript
+// Winston logger configuration
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/infrastructure/database-schema">
+    Explore data models in detail
+  </Card>
+  <Card title="Redis Caching" icon="server" href="/infrastructure/redis-caching">
+    Learn caching strategies
+  </Card>
+  <Card title="WebSockets" icon="plug" href="/infrastructure/websockets">
+    Implement real-time features
+  </Card>
+  <Card title="PM2 Cluster" icon="circle-nodes" href="/infrastructure/pm2-cluster">
+    Configure process management
+  </Card>
+</CardGroup>

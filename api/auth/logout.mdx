@@ -1,0 +1,54 @@
+---
+title: "Logout"
+description: "Invalidate a refresh token and log out the user"
+---
+
+## POST /v1/auth/logout
+
+Log out a user by invalidating their refresh token. After logout, the refresh token can no longer be used to obtain new access tokens.
+
+### Request Body
+
+<ParamField body="refreshToken" type="string" required>
+  The refresh token to invalidate
+</ParamField>
+
+### Response
+
+Returns a `204 No Content` status with an empty response body on successful logout.
+
+### Example Request
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTczODg0NTY1MiwiZXhwIjoxNzQxNDM3NjUyfQ.6k8yzwDEfJXAg3Wq3l8ZqJd7aJd7aJd7aJd7aJd70"
+  }'
+```
+
+### Example Response
+
+```bash 204 - No Content
+(Empty response body)
+```
+
+### Error Responses
+
+```json 400 - Bad Request
+{
+  "code": 400,
+  "message": "\"refreshToken\" is required"
+}
+```
+
+```json 404 - Not Found
+{
+  "code": 404,
+  "message": "Refresh token not found"
+}
+```
+
+<Note>
+  After logout, the access token will continue to work until it expires. To immediately revoke access, implement token blacklisting on your server or use short-lived access tokens.
+</Note>

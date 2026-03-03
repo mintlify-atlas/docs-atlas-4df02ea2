@@ -1,0 +1,142 @@
+---
+title: 'Get Match Team Stats'
+api: 'GET /v1/stats/match/{matchId}/players'
+---
+
+Retrieve statistics for all players in a match, organized by team.
+
+<Note>This endpoint requires authentication with `getStats` permission.</Note>
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  MongoDB ObjectId of the match
+</ParamField>
+
+## Response
+
+<ResponseField name="matchId" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="team1" type="object">
+  Team 1 statistics
+  <ResponseField name="teamId" type="string">
+    Team ID
+  </ResponseField>
+  <ResponseField name="teamName" type="string">
+    Team name
+  </ResponseField>
+  <ResponseField name="totalRuns" type="integer">
+    Total runs scored by team
+  </ResponseField>
+  <ResponseField name="totalWickets" type="integer">
+    Total wickets lost
+  </ResponseField>
+  <ResponseField name="overs" type="number">
+    Total overs faced
+  </ResponseField>
+  <ResponseField name="players" type="array">
+    Array of player statistics
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="team2" type="object">
+  Team 2 statistics (same structure as team1)
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.cricpr.com/v1/stats/match/507f1f77bcf86cd799439011/players" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "matchId": "507f1f77bcf86cd799439011",
+  "team1": {
+    "teamId": "507f1f77bcf86cd799439020",
+    "teamName": "Mumbai Indians",
+    "totalRuns": 185,
+    "totalWickets": 7,
+    "overs": 20,
+    "players": [
+      {
+        "playerId": "507f1f77bcf86cd799439012",
+        "playerName": "John Doe",
+        "batting": {
+          "runs": 45,
+          "ballsFaced": 32,
+          "fours": 5,
+          "sixes": 2,
+          "strikeRate": 140.63
+        },
+        "bowling": {
+          "overs": 0,
+          "runs": 0,
+          "wickets": 0
+        }
+      },
+      {
+        "playerId": "507f1f77bcf86cd799439013",
+        "playerName": "Jane Smith",
+        "batting": {
+          "runs": 67,
+          "ballsFaced": 48,
+          "fours": 8,
+          "sixes": 3,
+          "strikeRate": 139.58
+        },
+        "bowling": {
+          "overs": 4,
+          "runs": 32,
+          "wickets": 1
+        }
+      }
+    ]
+  },
+  "team2": {
+    "teamId": "507f1f77bcf86cd799439021",
+    "teamName": "Chennai Super Kings",
+    "totalRuns": 178,
+    "totalWickets": 8,
+    "overs": 20,
+    "players": [
+      {
+        "playerId": "507f1f77bcf86cd799439030",
+        "playerName": "Bob Wilson",
+        "batting": {
+          "runs": 52,
+          "ballsFaced": 38,
+          "fours": 6,
+          "sixes": 2,
+          "strikeRate": 136.84
+        },
+        "bowling": {
+          "overs": 4,
+          "runs": 28,
+          "wickets": 2
+        }
+      }
+    ]
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="403" type="error">
+  Forbidden - Insufficient permissions
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Match not found
+</ResponseField>

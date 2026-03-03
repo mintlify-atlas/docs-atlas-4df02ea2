@@ -1,0 +1,325 @@
+---
+title: Creating matches
+description: Learn how to create and set up cricket matches using the CricPR API
+---
+
+This guide walks you through the complete workflow for creating and starting a cricket match.
+
+## Overview
+
+Creating a match involves several steps:
+
+1. Create match with basic configuration
+2. Register teams with players
+3. Start the match with toss details
+4. Begin the first innings
+
+<Steps>
+
+### Create a match
+
+Create a new match with match configuration and team details:
+
+```javascript
+POST /v1/matches
+```
+
+**Request body:**
+
+```json
+{
+  "title": "Summer League Final",
+  "teamA": "64a1234567890abcdef12345",
+  "teamB": "64a1234567890abcdef12346",
+  "overs": 20,
+  "matchType": "t20",
+  "ballType": "leather",
+  "pitchType": "hard",
+  "oversPerBowler": 4,
+  "startdatetime": "2024-07-15T14:00:00Z",
+  "venue": "Central Cricket Ground",
+  "city": "Mumbai",
+  "country": "India"
+}
+```
+
+**Response:**
+
+```json
+{
+  "_id": "64a1234567890abcdef12347",
+  "status": "pending",
+  "isScheduled": true,
+  "teamAInstanceId": {
+    "_id": "64a1234567890abcdef12348",
+    "teamId": {
+      "_id": "64a1234567890abcdef12345",
+      "name": "Mumbai Warriors",
+      "logo": "https://example.com/logo.png"
+    },
+    "players": [...]
+  },
+  "matchConfigId": {
+    "overs": 20,
+    "matchType": "t20",
+    "oversPerBowler": 4
+  }
+}
+```
+
+<Note>
+The API automatically creates team instances and match configuration. Team instances are snapshots of teams at the time of the match, allowing historical accuracy.
+</Note>
+
+### Register teams
+
+If you need to update team compositions, register the playing XI for both teams:
+
+```javascript
+POST /v1/matches/:matchId/register-teams
+```
+
+**Request body:**
+
+```json
+{
+  "teamAPlayers": [
+    "64a1234567890abcdef12350",
+    "64a1234567890abcdef12351",
+    // ... 11 players total
+  ],
+  "teamBPlayers": [
+    "64a1234567890abcdef12360",
+    "64a1234567890abcdef12361",
+    // ... 11 players total
+  ],
+  "teamACaptainId": "64a1234567890abcdef12350",
+  "teamBCaptainId": "64a1234567890abcdef12360"
+}
+```
+
+From `src/services/match.service.js:35-196`:
+
+```javascript
+const createMatch = async (matchBody) => {
+  // Create match config first
+  const matchConfig = await MatchConfig.create({
+    overs,
+    matchType,
+    ballType,
+    pitchType,
+    noOfDays,
+    oversPerBowler,
+    showWagonWheel: matchBody.showWagonWheel || false,
+  });
+
+  // Create team instances
+  const teamAInstance = await TeamInstance.create({
+    teamId: teamA,
+    captainId: teamADocs.captain,
+    wicketKeeperId: teamADocs.captain,
+    scorerId: teamADocs.captain,
+    players: teamADocs.players,
+  });
+
+  // Create match with team instances
+  const match = await Match.create({
+    ...matchData,
+    matchType: 'friendly',
+    teamAInstanceId: teamAInstance._id,
+    teamBInstanceId: teamBInstance._id,
+    matchConfigId: matchConfig._id,
+    isScheduled,
+  });
+};
+```
+
+### Start the match
+
+Once teams are ready, start the match by recording the toss:
+
+```javascript
+POST /v1/matches/:matchId/start
+```
+
+**Request body:**
+
+```json
+{
+  "tossWinnerTeamInstanceId": "64a1234567890abcdef12348",
+  "tossDecision": "bat"
+}
+```
+
+**Response:**
+
+```json
+{
+  "_id": "64a1234567890abcdef12347",
+  "status": "inProgress",
+  "tossWinnerTeamInstanceId": "64a1234567890abcdef12348",
+  "tossDecision": "bat",
+  "tossTime": "2024-07-15T14:00:00Z",
+  "firstInningsId": "64a1234567890abcdef12370"
+}
+```
+
+From `src/services/match.service.js:530-605`:
+
+```javascript
+const startMatch = async (matchId, startData) => {
+  const { tossWinnerTeamInstanceId, tossDecision } = startData;
+
+  // Determine batting and bowling teams based on toss
+  if (tossDecision === 'bat') {
+    battingTeamInstanceId = tossWinnerTeamInstanceId;
+    bowlingTeamInstanceId = match.teamAInstanceId.equals(tossWinnerTeamInstanceId)
+      ? match.teamBInstanceId
+      : match.teamAInstanceId;
+  } else {
+    bowlingTeamInstanceId = tossWinnerTeamInstanceId;
+    battingTeamInstanceId = match.teamAInstanceId.equals(tossWinnerTeamInstanceId)
+      ? match.teamBInstanceId
+      : match.teamAInstanceId;
+  }
+
+  // Create the first innings
+  const firstInnings = await Innings.create({
+    matchId: match._id,
+    battingTeamInstanceId,
+    bowlingTeamInstanceId,
+    dayNumber: isTestMatch && currentDay ? currentDay.dayNumber : null,
+  });
+};
+```
+
+<Note>
+The first innings is automatically created when you start the match. The toss decision determines which team bats first.
+</Note>
+
+### Begin scoring
+
+After starting the match, you can begin scoring by starting the first over:
+
+```javascript
+POST /v1/overs/start
+```
+
+**Request body:**
+
+```json
+{
+  "inningId": "64a1234567890abcdef12370",
+  "bowlerId": "64a1234567890abcdef12360",
+  "batsmanId": "64a1234567890abcdef12350",
+  "nonStrikerId": "64a1234567890abcdef12351"
+}
+```
+
+</Steps>
+
+## Match types
+
+The API supports multiple match formats:
+
+<CodeGroup>
+
+```json T20 Match
+{
+  "overs": 20,
+  "matchType": "t20",
+  "oversPerBowler": 4
+}
+```
+
+```json ODI Match
+{
+  "overs": 50,
+  "matchType": "odi",
+  "oversPerBowler": 10
+}
+```
+
+```json Test Match
+{
+  "noOfDays": 5,
+  "matchType": "test",
+  "oversPerBowler": null
+}
+```
+
+</CodeGroup>
+
+## Scheduled matches
+
+Matches with a `startdatetime` in the future are automatically marked as scheduled:
+
+```json
+{
+  "startdatetime": "2024-07-15T14:00:00Z",
+  "isScheduled": true
+}
+```
+
+When you start the match, `isScheduled` is automatically set to `false`.
+
+## Error handling
+
+Common errors when creating matches:
+
+<AccordionGroup>
+
+<Accordion title="Team not found">
+
+```json
+{
+  "code": 404,
+  "message": "Team A not found"
+}
+```
+
+Ensure both team IDs exist before creating the match.
+
+</Accordion>
+
+<Accordion title="Match already started">
+
+```json
+{
+  "code": 400,
+  "message": "Match cannot be started. Current status: inProgress"
+}
+```
+
+You can only start a match with `status: "pending"`.
+
+</Accordion>
+
+<Accordion title="Invalid toss winner">
+
+```json
+{
+  "code": 400,
+  "message": "Toss winner team instance must belong to this match"
+}
+```
+
+The toss winner must be either `teamAInstanceId` or `teamBInstanceId` from the match.
+
+</Accordion>
+
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Live scoring" icon="cricket" href="/guides/live-scoring">
+  Record balls, wickets, and extras
+</Card>
+
+<Card title="Statistics" icon="chart-line" href="/guides/statistics">
+  Access player and match statistics
+</Card>
+
+</CardGroup>

@@ -1,0 +1,90 @@
+---
+title: 'Update Match Stats'
+api: 'POST /v1/stats/match/{matchId}/update'
+---
+
+Update and recalculate statistics for a specific match. This endpoint processes all innings, overs, and balls to generate up-to-date statistics.
+
+<Note>This endpoint requires authentication with `updateStats` permission.</Note>
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  MongoDB ObjectId of the match
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Whether the update was successful
+</ResponseField>
+
+<ResponseField name="matchId" type="string">
+  Match ID that was updated
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of when stats were updated
+</ResponseField>
+
+<ResponseField name="stats" type="object">
+  Updated match statistics
+  <ResponseField name="totalRuns" type="integer">
+    Total runs in the match
+  </ResponseField>
+  <ResponseField name="totalWickets" type="integer">
+    Total wickets fallen
+  </ResponseField>
+  <ResponseField name="totalOvers" type="number">
+    Total overs bowled
+  </ResponseField>
+  <ResponseField name="totalFours" type="integer">
+    Total boundaries (4s)
+  </ResponseField>
+  <ResponseField name="totalSixes" type="integer">
+    Total sixes (6s)
+  </ResponseField>
+  <ResponseField name="playersUpdated" type="integer">
+    Number of player statistics updated
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST "https://api.cricpr.com/v1/stats/match/507f1f77bcf86cd799439011/update" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "success": true,
+  "matchId": "507f1f77bcf86cd799439011",
+  "updatedAt": "2026-03-03T12:30:45.123Z",
+  "stats": {
+    "totalRuns": 363,
+    "totalWickets": 15,
+    "totalOvers": 40,
+    "totalFours": 42,
+    "totalSixes": 18,
+    "playersUpdated": 22
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="403" type="error">
+  Forbidden - Insufficient permissions
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Match not found
+</ResponseField>

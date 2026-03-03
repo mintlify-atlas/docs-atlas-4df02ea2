@@ -1,0 +1,190 @@
+---
+title: "Login"
+description: "Authenticate a user and receive access tokens"
+---
+
+## POST /v1/auth/login
+
+Authenticate a user using email or phone number along with a password. Returns user details, authentication tokens, and player profile information.
+
+### Request Body
+
+<ParamField body="email" type="string">
+  Email address (required if phone not provided)
+</ParamField>
+
+<ParamField body="phone" type="string">
+  Phone number (required if email not provided)
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User password
+</ParamField>
+
+<ParamField body="fcmToken" type="string">
+  Firebase Cloud Messaging token for push notifications (optional)
+</ParamField>
+
+<Note>
+  Either `email` or `phone` must be provided, but not both.
+</Note>
+
+### Response
+
+<ResponseField name="user" type="object">
+  The authenticated user object
+  
+  <ResponseField name="id" type="string">
+    User ID
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    User's full name
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    User's email address
+  </ResponseField>
+  
+  <ResponseField name="phone" type="string">
+    User's phone number (if set)
+  </ResponseField>
+  
+  <ResponseField name="role" type="string">
+    User's role
+  </ResponseField>
+  
+  <ResponseField name="isEmailVerified" type="boolean">
+    Whether the email has been verified
+  </ResponseField>
+  
+  <ResponseField name="fcmToken" type="string">
+    Firebase Cloud Messaging token
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="tokens" type="object">
+  Authentication tokens
+  
+  <ResponseField name="access" type="object">
+    Access token details
+    
+    <ResponseField name="token" type="string">
+      JWT access token for API authentication
+    </ResponseField>
+    
+    <ResponseField name="expires" type="string">
+      Token expiration timestamp (ISO 8601)
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="refresh" type="object">
+    Refresh token details
+    
+    <ResponseField name="token" type="string">
+      JWT refresh token for obtaining new access tokens
+    </ResponseField>
+    
+    <ResponseField name="expires" type="string">
+      Token expiration timestamp (ISO 8601)
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="playerProfile" type="object">
+  Player profile information
+  
+  <ResponseField name="id" type="string">
+    Player profile ID
+  </ResponseField>
+  
+  <ResponseField name="userId" type="string">
+    Associated user ID
+  </ResponseField>
+  
+  <ResponseField name="shortName" type="string">
+    Player's short name
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Profile status (`active` or `incomplete_profile`)
+  </ResponseField>
+</ResponseField>
+
+### Example Request (Email)
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.smith@example.com",
+    "password": "password123"
+  }'
+```
+
+### Example Request (Phone)
+
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "92332206715",
+    "password": "password123",
+    "fcmToken": "fK3j8sL2mN9..."
+  }'
+```
+
+### Example Response
+
+```json 200 - OK
+{
+  "user": {
+    "id": "67a2596cd3defa11b079b943",
+    "name": "John Smith",
+    "email": "john.smith@example.com",
+    "phone": "92332206715",
+    "role": "user",
+    "isEmailVerified": true,
+    "fcmToken": "fK3j8sL2mN9..."
+  },
+  "tokens": {
+    "access": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJpYXQiOjE3Mzg4NDU2NTIsImV4cCI6MTczODg0OTI1Mn0.fVq0rFQERmfZEzy6wcQIopbympIIMKg9i6cEyqApmnI",
+      "expires": "2026-02-06T15:49:10.722Z"
+    },
+    "refresh": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2N2EyNTk2Y2QzZGVmYTExYjA3OWI5NDMiLCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTczODg0NTY1MiwiZXhwIjoxNzQxNDM3NjUyfQ.6k8yzwDEfJXAg3Wq3l8ZqJd7aJd7aJd7aJd7aJd70",
+      "expires": "2026-03-09T14:19:10.722Z"
+    }
+  },
+  "playerProfile": {
+    "id": "67a2596dd3defa11b079b944",
+    "userId": "67a2596cd3defa11b079b943",
+    "shortName": "John Smith",
+    "status": "active"
+  }
+}
+```
+
+### Error Responses
+
+```json 400 - Bad Request
+{
+  "code": 400,
+  "message": "Email or phone is required."
+}
+```
+
+```json 401 - Unauthorized
+{
+  "code": 401,
+  "message": "Incorrect email or password"
+}
+```
+
+```json 401 - Unauthorized
+{
+  "code": 401,
+  "message": "Incorrect phone or password"
+}
+```

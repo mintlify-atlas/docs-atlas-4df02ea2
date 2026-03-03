@@ -1,0 +1,203 @@
+---
+title: 'Record Ball'
+api: 'POST /v1/balls/record'
+---
+
+Record a ball delivery with all relevant details including runs, extras, wickets, and trajectory information.
+
+<Note>This endpoint requires authentication.</Note>
+
+## Body Parameters
+
+<ParamField body="overId" type="string" required>
+  ID of the over this ball belongs to
+</ParamField>
+
+<ParamField body="batsmanId" type="string" required>
+  ID of the batsman facing the delivery
+</ParamField>
+
+<ParamField body="nonStrikerId" type="string" required>
+  ID of the non-striker batsman
+</ParamField>
+
+<ParamField body="bowlerId" type="string" required>
+  ID of the bowler delivering the ball
+</ParamField>
+
+<ParamField body="runScored" type="integer" default="0">
+  Number of runs scored off this ball (minimum: 0)
+</ParamField>
+
+<ParamField body="isFour" type="boolean" default="false">
+  Whether this ball resulted in a boundary (4 runs)
+</ParamField>
+
+<ParamField body="isSix" type="boolean" default="false">
+  Whether this ball resulted in a six (6 runs)
+</ParamField>
+
+<ParamField body="extras" type="integer" default="0">
+  Number of extra runs (minimum: 0)
+</ParamField>
+
+<ParamField body="extraType" type="string">
+  Type of extra if any
+  - `noBall`
+  - `wide`
+  - `bye`
+  - `legBye`
+  - `null`
+</ParamField>
+
+<ParamField body="isLegalDelivery" type="boolean" default="true">
+  Whether this was a legal delivery
+</ParamField>
+
+<ParamField body="wicketPlayerOut" type="string">
+  ID of the player who got out (if wicket fell)
+</ParamField>
+
+<ParamField body="nextBatsmanId" type="string">
+  ID of the next batsman (if wicket fell)
+</ParamField>
+
+<ParamField body="dismissalType" type="string">
+  Type of dismissal if wicket fell
+  - `lbw`
+  - `bowled`
+  - `caught`
+  - `run out`
+  - `stumped`
+  - `timed out`
+  - `hit wicket`
+  - `retired out`
+  - `retired hurt`
+  - `hit the ball twice`
+  - `obstructing the field`
+  - `none`
+</ParamField>
+
+<ParamField body="isFreeHit" type="boolean" default="false">
+  Whether this ball is a free hit
+</ParamField>
+
+<ParamField body="direction" type="string">
+  Direction of the ball
+  - `Long Off`
+  - `Long On`
+  - `Deep Mid Wicket`
+  - `Deep Square Leg`
+  - `Deep Fine Leg`
+  - `Deep Point`
+  - `Deep Cover`
+  - `Third Man`
+</ParamField>
+
+<ParamField body="angle" type="number">
+  Angle of the ball trajectory in degrees
+</ParamField>
+
+<ParamField body="distance" type="number">
+  Distance the ball traveled in meters
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status ("success")
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The recorded ball object with all details
+  <ResponseField name="id" type="string">
+    Ball ID
+  </ResponseField>
+  <ResponseField name="overId" type="string">
+    Over ID
+  </ResponseField>
+  <ResponseField name="batsmanId" type="string">
+    Batsman ID
+  </ResponseField>
+  <ResponseField name="bowlerId" type="string">
+    Bowler ID
+  </ResponseField>
+  <ResponseField name="runScored" type="integer">
+    Runs scored
+  </ResponseField>
+  <ResponseField name="isFour" type="boolean">
+    Is boundary
+  </ResponseField>
+  <ResponseField name="isSix" type="boolean">
+    Is six
+  </ResponseField>
+  <ResponseField name="extras" type="integer">
+    Extra runs
+  </ResponseField>
+  <ResponseField name="extraType" type="string">
+    Type of extra
+  </ResponseField>
+  <ResponseField name="isLegalDelivery" type="boolean">
+    Is legal delivery
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST "https://api.cricpr.com/v1/balls/record" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "overId": "507f1f77bcf86cd799439011",
+    "batsmanId": "507f1f77bcf86cd799439012",
+    "nonStrikerId": "507f1f77bcf86cd799439013",
+    "bowlerId": "507f1f77bcf86cd799439014",
+    "runScored": 4,
+    "isFour": true,
+    "isSix": false,
+    "extras": 0,
+    "isLegalDelivery": true,
+    "direction": "Long Off",
+    "angle": 117.88,
+    "distance": 99.01
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "id": "507f1f77bcf86cd799439020",
+    "overId": "507f1f77bcf86cd799439011",
+    "batsmanId": "507f1f77bcf86cd799439012",
+    "nonStrikerId": "507f1f77bcf86cd799439013",
+    "bowlerId": "507f1f77bcf86cd799439014",
+    "runScored": 4,
+    "isFour": true,
+    "isSix": false,
+    "extras": 0,
+    "extraType": null,
+    "isLegalDelivery": true,
+    "direction": "Long Off",
+    "angle": 117.88,
+    "distance": 99.01
+  }
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - Invalid input data
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="403" type="error">
+  Forbidden - Insufficient permissions
+</ResponseField>

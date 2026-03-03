@@ -1,0 +1,300 @@
+---
+title: "Batch Sync Strategy"
+description: "Implementation guide for offline batch synchronization"
+---
+
+This guide explains the batch sync strategy for offline cricket scoring, including when to sync and how to handle edge cases.
+
+## Overview
+
+The CricPR API supports batch synchronization for balls recorded offline. This is essential for mobile scorers who may not have consistent internet connectivity during matches.
+
+## Sync Strategies
+
+### Strategy 1: Sync at Innings End (Recommended)
+
+**When to use**: Primary sync strategy for most use cases
+
+**Flow**:
+1. Record all balls offline in local SQLite
+2. When innings completes, check internet connectivity
+3. Send all balls in a single batch to `/sync/innings/:inningsId/batch`
+4. Backend performs full recalculation for consistency
+
+**Advantages**:
+- Simple implementation
+- One sync operation
+- Guaranteed consistency
+- Minimal API calls
+
+**Disadvantages**:
+- Higher data loss risk if app crashes before innings ends
+- No backup during long innings
+
+### Strategy 2: Hybrid Sync (Recommended for Production)
+
+**When to use**: Production apps requiring data safety
+
+**Flow**:
+1. Record balls offline in SQLite during innings
+2. **Periodically sync** when internet available (every 50-100 balls)
+3. **Final sync** at innings end with full recalculation
+
+**Advantages**:
+- Data safety (backup during innings)
+- Consistency guarantee (full recalc at end)
+- Reduced data loss risk
+
+**Disadvantages**:
+- Slightly more complex
+- Multiple API calls
+
+## Implementation Example
+
+### Mobile App: Offline Innings Manager
+
+```javascript
+class OfflineInningsManager {
+  constructor() {
+    this.syncInProgress = false;
+    this.lastSyncTime = null;
+    this.SYNC_INTERVAL = 50; // Sync every 50 balls
+  }
+
+  /**
+   * Called when a ball is recorded
+   */
+  async recordBall(inningsId, ballData) {
+    // Save to local SQLite
+    await this.saveBallToSQLite(ballData);
+    
+    // Check if we should sync
+    const unsyncedCount = await this.getUnsyncedBallCount(inningsId);
+    if (unsyncedCount >= this.SYNC_INTERVAL) {
+      // Try to sync as backup (non-blocking)
+      this.syncBallsAsBackup(inningsId).catch(err => {
+        console.log('Backup sync failed, will retry at innings end');
+      });
+    }
+  }
+
+  /**
+   * Optional: Sync during innings as backup
+   */
+  async syncBallsAsBackup(inningsId) {
+    if (this.syncInProgress) return;
+    
+    const isOnline = await this.checkInternet();
+    if (!isOnline) return;
+    
+    this.syncInProgress = true;
+    
+    try {
+      const balls = await this.getUnsyncedBalls(inningsId);
+      if (balls.length === 0) return;
+      
+      await fetch(`/v1/sync/innings/${inningsId}/batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ balls })
+      });
+      
+      // Mark as synced in SQLite
+      await this.markBallsAsSynced(balls.map(b => b.ball_id));
+      
+      this.lastSyncTime = new Date();
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Required: Final sync at innings end
+   */
+  async endInningsAndSync(inningsId, endData) {
+    // Always sync ALL balls at end for consistency
+    const allBalls = await this.getAllBalls(inningsId);
+    
+    const isOnline = await this.checkInternet();
+    if (!isOnline) {
+      throw new Error('Internet required to complete innings');
+    }
+    
+    // Final batch sync with full recalculation
+    const response = await fetch(`/v1/sync/innings/${inningsId}/batch`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ balls: allBalls })
+    });
+    
+    const result = await response.json();
+    
+    // Mark all as synced
+    await this.markAllBallsAsSynced(inningsId);
+    
+    // Now end the innings
+    await fetch(`/v1/innings/${inningsId}/end`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': application/json'
+      },
+      body: JSON.stringify(endData)
+    });
+    
+    return result;
+  }
+}
+```
+
+## Key Principles
+
+### 1. Always Sync at Innings End
+
+No matter what happens during the innings, always perform a final batch sync when the innings ends. This ensures:
+
+- All balls are accounted for
+- Statistics are correctly calculated
+- No data is lost
+
+### 2. Deduplication is Automatic
+
+The backend uses `ball_id` for deduplication:
+
+- Safe to send the same ball multiple times
+- Backend will skip duplicates
+- No need to track what was synced on the client
+
+### 3. Full Recalculation Guarantees Consistency
+
+The backend recalculates everything from scratch:
+
+- Overs statistics
+- Innings totals
+- Player batting/bowling stats
+- Match scorecard
+- Partnership details
+
+This means even if some balls were synced incorrectly mid-innings, the final sync will correct everything.
+
+## Edge Cases
+
+### Internet Drops During Sync
+
+**Problem**: Sync starts but fails halfway through
+
+**Solution**: 
+- Transaction-based sync ensures atomic operations
+- If sync fails, no partial data is saved
+- Retry the full sync
+
+### App Crashes Mid-Innings
+
+**Problem**: Balls stored in SQLite but not synced
+
+**Solution**:
+- On app restart, detect incomplete innings
+- Prompt user to complete or abandon innings
+- If completing, sync all balls from SQLite
+
+### Internet Available Mid-Innings
+
+**Problem**: Started offline, internet returns during innings
+
+**Solution** (Hybrid Strategy):
+- Optionally sync current balls as backup
+- Continue offline scoring
+- Final sync at innings end ensures consistency
+
+## Performance Considerations
+
+### Batch Size
+
+- **Typical innings**: 120-500 balls
+- **Maximum supported**: 10,000 balls per request
+- **Recommendation**: Sync entire innings in one batch
+
+### Network Optimization
+
+```javascript
+// Compress ball data before sending
+const balls = await this.getAllBalls(inningsId);
+
+// Only include necessary fields
+const compressedBalls = balls.map(ball => ({
+  ball_id: ball.ball_id,
+  innings_id: ball.innings_id,
+  over_number: ball.over_number,
+  ball_sequence: ball.ball_sequence,
+  runs: ball.runs,
+  extras_type: ball.extras_type,
+  extras_runs: ball.extras_runs,
+  wicket_type: ball.wicket_type,
+  dismissal_player_id: ball.dismissal_player_id,
+  fielder_id: ball.fielder_id,
+  striker_id: ball.striker_id,
+  non_striker_id: ball.non_striker_id,
+  baller_id: ball.baller_id,
+  created_at: ball.created_at
+}));
+
+await api.syncBalls(inningsId, compressedBalls);
+```
+
+## Testing
+
+### Test Scenarios
+
+1. **Happy Path**: Offline scoring → Innings ends → Sync → Success
+2. **Partial Sync**: Sync 100 balls → App crashes → Restart → Sync all 500 balls
+3. **Duplicate Handling**: Sync same balls twice → Backend deduplicates
+4. **Network Failure**: Sync starts → Network drops → Retry → Success
+5. **Invalid Data**: Send invalid ball → Backend validation error → Fix & retry
+
+## Monitoring
+
+Track these metrics:
+
+- Sync success rate
+- Average sync duration
+- Duplicate ball rate
+- Balls inserted vs skipped
+- Network retry count
+
+## Related Endpoints
+
+- [Offline Sync](/api/sync/offline-sync) - Main batch sync endpoint
+- [Innings API](/api/innings/update) - Update innings endpoint
+- [Match API](/api/matches/scorecard) - View synced scorecard
+
+## Best Practices
+
+<Check>
+  **Do**: Sync at innings end for guaranteed consistency
+</Check>
+
+<Check>
+  **Do**: Use periodic backup syncs for data safety
+</Check>
+
+<Check>
+  **Do**: Handle network failures gracefully with retries
+</Check>
+
+<Warning>
+  **Don't**: Rely only on mid-innings syncs without final sync
+</Warning>
+
+<Warning>
+  **Don't**: Assume mid-innings syncs are perfectly consistent
+</Warning>
+
+<Warning>
+  **Don't**: Block the UI during background syncs
+</Warning>

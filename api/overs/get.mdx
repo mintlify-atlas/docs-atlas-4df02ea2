@@ -1,0 +1,105 @@
+---
+title: 'Get Overs by Innings'
+api: 'GET /v1/overs/inning/{inningId}'
+---
+
+Retrieve all overs for a specific innings.
+
+## Path Parameters
+
+<ParamField path="inningId" type="string" required>
+  MongoDB ObjectId of the innings
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status ("success")
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of over objects
+  <ResponseField name="id" type="string">
+    Over ID
+  </ResponseField>
+  <ResponseField name="inningId" type="string">
+    Innings ID
+  </ResponseField>
+  <ResponseField name="bowlerId" type="string">
+    Bowler ID
+  </ResponseField>
+  <ResponseField name="overNumber" type="integer">
+    Over number in the innings
+  </ResponseField>
+  <ResponseField name="runs" type="integer">
+    Total runs in this over
+  </ResponseField>
+  <ResponseField name="wickets" type="integer">
+    Wickets taken in this over
+  </ResponseField>
+  <ResponseField name="balls" type="array">
+    Array of ball IDs in this over
+  </ResponseField>
+  <ResponseField name="isCompleted" type="boolean">
+    Whether the over is completed
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.cricpr.com/v1/overs/inning/507f1f77bcf86cd799439011" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "inningId": "507f1f77bcf86cd799439011",
+      "bowlerId": "507f1f77bcf86cd799439012",
+      "overNumber": 1,
+      "runs": 8,
+      "wickets": 0,
+      "balls": [
+        "507f1f77bcf86cd799439030",
+        "507f1f77bcf86cd799439031",
+        "507f1f77bcf86cd799439032",
+        "507f1f77bcf86cd799439033",
+        "507f1f77bcf86cd799439034",
+        "507f1f77bcf86cd799439035"
+      ],
+      "isCompleted": true
+    },
+    {
+      "id": "507f1f77bcf86cd799439021",
+      "inningId": "507f1f77bcf86cd799439011",
+      "bowlerId": "507f1f77bcf86cd799439015",
+      "overNumber": 2,
+      "runs": 12,
+      "wickets": 1,
+      "balls": [
+        "507f1f77bcf86cd799439036",
+        "507f1f77bcf86cd799439037",
+        "507f1f77bcf86cd799439038",
+        "507f1f77bcf86cd799439039"
+      ],
+      "isCompleted": false
+    }
+  ]
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - Invalid innings ID
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Innings not found
+</ResponseField>

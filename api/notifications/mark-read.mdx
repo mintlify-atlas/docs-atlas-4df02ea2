@@ -1,0 +1,113 @@
+---
+title: "Mark Notification as Read"
+api: "POST /v1/notifications/:notificationId/read"
+description: "Mark a specific notification as read"
+---
+
+Update the read status of a notification to mark it as seen by the user.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="notificationId" type="string" required>
+  The unique identifier of the notification to mark as read
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Notification ID
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Notification title
+</ResponseField>
+
+<ResponseField name="body" type="string">
+  Notification message body
+</ResponseField>
+
+<ResponseField name="read" type="boolean">
+  Read status (will be `true` after marking as read)
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Action type associated with the notification
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Additional notification metadata
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  ID of the user who received the notification
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  Timestamp when the notification was created
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  Timestamp when the notification was last updated
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request POST \
+  --url 'https://api.cricpr.com/v1/notifications/60a7f8c8d5f3e2001f8e4e7a/read' \
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "id": "60a7f8c8d5f3e2001f8e4e7a",
+  "title": "Match Starting Soon",
+  "body": "Your match against Team B starts in 30 minutes",
+  "read": true,
+  "action": "NAVIGATE",
+  "metadata": {
+    "matchId": "60a7f8c8d5f3e2001f8e4e7b"
+  },
+  "userId": "60a7f8c8d5f3e2001f8e4e7d",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T11:00:00.000Z"
+}
+```
+
+</ResponseExample>
+
+## Error Responses
+
+<ResponseField name="404 Not Found">
+  The notification was not found or does not belong to the authenticated user
+  
+  ```json
+  {
+    "code": 404,
+    "message": "Notification not found"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>

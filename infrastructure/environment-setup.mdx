@@ -1,0 +1,256 @@
+---
+title: 'Environment Setup'
+description: 'Configure environment variables and system requirements for CricPR API'
+icon: 'gear'
+---
+
+## Overview
+
+The CricPR API requires specific environment variables and system configuration to run properly. This guide covers all necessary setup steps for development, staging, and production environments.
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Node.js" icon="node-js">
+    Version 12.0.0 or higher required
+  </Card>
+  <Card title="MongoDB" icon="database">
+    MongoDB 4.2.1 or higher
+  </Card>
+  <Card title="Redis" icon="server">
+    For caching and session management
+  </Card>
+  <Card title="PM2" icon="circle-nodes">
+    For production process management
+  </Card>
+</CardGroup>
+
+## Environment Variables
+
+<Steps>
+  <Step title="Create Environment File">
+    Copy the `.env.example` file to create your environment configuration:
+    
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Configure Core Settings">
+    Set up the basic application configuration:
+    
+    ```bash .env
+    PROJECT_NAME="Cric PR Local Development"
+    NODE_ENV=development
+    PORT=3006
+    SOCKET_PORT=3001
+    ```
+    
+    <Note>
+      The `NODE_ENV` variable determines cluster behavior and Redis connection modes.
+    </Note>
+  </Step>
+
+  <Step title="Database Configuration">
+    Configure MongoDB connection:
+    
+    ```bash .env
+    MONGODB_URL=mongodb://username:password@host:port/database?options
+    ```
+    
+    <Warning>
+      Ensure your MongoDB connection string includes SSL/TLS settings for production environments.
+    </Warning>
+  </Step>
+
+  <Step title="JWT Configuration">
+    Set up authentication tokens:
+    
+    ```bash .env
+    JWT_SECRET=your-secret-key-here
+    JWT_ACCESS_EXPIRATION_MINUTES=30
+    JWT_REFRESH_EXPIRATION_DAYS=30
+    JWT_RESET_PASSWORD_EXPIRATION_MINUTES=10
+    JWT_VERIFY_EMAIL_EXPIRATION_MINUTES=10
+    ```
+    
+    <Warning>
+      Use a strong, random secret key in production. Never commit secrets to version control.
+    </Warning>
+  </Step>
+
+  <Step title="Email Configuration">
+    Configure SMTP settings for email notifications:
+    
+    ```bash .env
+    SMTP_HOST=smtp.example.com
+    SMTP_PORT=465
+    SMTP_USERNAME=your-email@example.com
+    SMTP_PASSWORD=your-password
+    EMAIL_FROM=noreply@example.com
+    ```
+    
+    <Note>
+      For development, consider using services like Ethereal Email for testing.
+    </Note>
+  </Step>
+
+  <Step title="Payment Integration">
+    Add Stripe credentials for payment processing:
+    
+    ```bash .env
+    STRIPE_SECRET_KEY=sk_test_...
+    STRIPE_PUBLISHABLE_KEY=pk_test_...
+    ```
+  </Step>
+
+  <Step title="Server Configuration">
+    Enable or disable API and WebSocket servers:
+    
+    ```bash .env
+    API_SERVER_ENABLE=true
+    WS_SERVER_ENABLE=false
+    ```
+  </Step>
+
+  <Step title="Server URLs">
+    Configure external server URLs (comma-separated):
+    
+    ```bash .env
+    SERVER_URLS=https://api.example.com/v1,https://backup.example.com/v1
+    ```
+  </Step>
+</Steps>
+
+## Environment-Specific Configuration
+
+### Development
+
+```bash
+NODE_ENV=development
+PORT=3006
+SOCKET_PORT=3001
+```
+
+- Single worker process
+- Hot reloading enabled
+- Detailed error messages
+- Standard Redis connection
+
+### Staging
+
+```bash
+NODE_ENV=staging
+PORT=3000
+```
+
+- Multiple worker processes (half CPU cores)
+- Production-like behavior
+- Error logging without sensitive data
+
+### Production
+
+```bash
+NODE_ENV=production
+PORT=3000
+```
+
+- Maximum worker processes (all CPU cores)
+- Redis cluster-aware connections
+- Optimized performance settings
+- Minimal logging
+
+## Verification
+
+After configuring your environment, verify the setup:
+
+<CodeGroup>
+```bash Development
+npm run dev
+```
+
+```bash Production
+npm run start:prod
+```
+</CodeGroup>
+
+Check the logs to ensure all services are connected:
+
+```bash
+npm run logs
+```
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Environment Variables">
+    - Never commit `.env` files to version control
+    - Use different secrets for each environment
+    - Rotate secrets regularly
+    - Use environment variable management tools in production
+  </Accordion>
+
+  <Accordion title="Database Credentials">
+    - Use strong passwords
+    - Enable SSL/TLS for connections
+    - Restrict database access by IP
+    - Use separate credentials for different environments
+  </Accordion>
+
+  <Accordion title="API Keys">
+    - Store in environment variables
+    - Use test keys for development
+    - Rotate keys periodically
+    - Monitor API key usage
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Issues">
+    If you encounter database or Redis connection issues:
+    
+    1. Verify connection strings are correct
+    2. Check firewall settings
+    3. Ensure services are running
+    4. Review authentication credentials
+  </Accordion>
+
+  <Accordion title="Port Conflicts">
+    If ports are already in use:
+    
+    ```bash
+    # Find process using port
+    lsof -i :3006
+    
+    # Change port in .env file
+    PORT=3007
+    ```
+  </Accordion>
+
+  <Accordion title="Environment Not Loading">
+    Ensure:
+    
+    - `.env` file exists in project root
+    - No syntax errors in `.env` file
+    - Application is restarted after changes
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Docker Deployment" icon="docker" href="/infrastructure/docker">
+    Deploy using Docker containers
+  </Card>
+  <Card title="PM2 Cluster Mode" icon="circle-nodes" href="/infrastructure/pm2-cluster">
+    Scale with PM2 process manager
+  </Card>
+  <Card title="Architecture Overview" icon="diagram-project" href="/infrastructure/architecture-overview">
+    Understand system architecture
+  </Card>
+  <Card title="Database Schema" icon="database" href="/infrastructure/database-schema">
+    Explore data models
+  </Card>
+</CardGroup>

@@ -1,0 +1,285 @@
+---
+title: "Offline Sync"
+api: "POST /v1/sync/innings/:inningsId/batch"
+description: "Sync offline balls for an innings in batch"
+---
+
+Sync balls that were recorded offline (stored in local SQLite) when an innings ends and internet connectivity is restored. This endpoint handles batch synchronization with automatic deduplication and full statistics recalculation.
+
+<Info>
+  This endpoint is designed for mobile apps that support offline scoring. When a scorer records balls without internet, they are stored locally and synced when the innings completes and connectivity is available.
+</Info>
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="inningsId" type="string" required>
+  The unique identifier of the innings to sync balls for
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="balls" type="array" required>
+  Array of ball objects to sync (minimum 1, maximum 10,000)
+  
+  <ParamField body="ball_id" type="string" required>
+    Unique ball ID from SQLite (used for deduplication)
+  </ParamField>
+  
+  <ParamField body="innings_id" type="string" required>
+    The innings ID this ball belongs to
+  </ParamField>
+  
+  <ParamField body="over_number" type="number" required>
+    Over number (e.g., 0.1, 1.2, 5.6)
+  </ParamField>
+  
+  <ParamField body="ball_sequence" type="number" required>
+    Sequence number for ordering balls correctly
+  </ParamField>
+  
+  <ParamField body="striker_id" type="string" required>
+    Player ID of the batsman on strike
+  </ParamField>
+  
+  <ParamField body="non_striker_id" type="string" required>
+    Player ID of the non-striker batsman
+  </ParamField>
+  
+  <ParamField body="baller_id" type="string" required>
+    Player ID of the bowler
+  </ParamField>
+  
+  <ParamField body="runs" type="number" default="0">
+    Runs scored off the bat (0-6)
+  </ParamField>
+  
+  <ParamField body="extras_type" type="string">
+    Type of extras. Options: `noBall`, `wide`, `bye`, `legBye`, or `null`
+  </ParamField>
+  
+  <ParamField body="extras_runs" type="number" default="0">
+    Additional runs from extras
+  </ParamField>
+  
+  <ParamField body="wicket_type" type="string">
+    Type of dismissal if a wicket fell. Options:
+    - `caught`
+    - `bowled`
+    - `lbw`
+    - `run out`
+    - `stumped`
+    - `hit wicket`
+    - `mankaded`
+    - `hit the ball twice`
+    - `obstructing the field`
+    - `timed out`
+    - `retired out`
+    - `retired hurt`
+  </ParamField>
+  
+  <ParamField body="dismissal_player_id" type="string">
+    Player ID of the dismissed batsman (required if wicket_type is set)
+  </ParamField>
+  
+  <ParamField body="fielder_id" type="string">
+    Player ID of the fielder involved in dismissal (optional)
+  </ParamField>
+  
+  <ParamField body="is_striker_rotated" type="boolean" default="false">
+    Whether the batsmen crossed after this ball
+  </ParamField>
+  
+  <ParamField body="ballData" type="object" default="{}">
+    Additional ball metadata (wagon wheel coordinates, etc.)
+  </ParamField>
+  
+  <ParamField body="syncStats" type="string" default="pending">
+    Sync status: `pending` or `synced`
+  </ParamField>
+  
+  <ParamField body="created_at" type="string" required>
+    Timestamp when the ball was recorded (ISO 8601 format)
+  </ParamField>
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Response status (`success`)
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  Sync result details
+  
+  <ResponseField name="ballsInserted" type="number">
+    Number of balls successfully inserted
+  </ResponseField>
+  
+  <ResponseField name="ballsSkipped" type="number">
+    Number of balls skipped (duplicates)
+  </ResponseField>
+  
+  <ResponseField name="ballsTotal" type="number">
+    Total number of balls in the request
+  </ResponseField>
+  
+  <ResponseField name="statsRecalculated" type="boolean">
+    Whether statistics were recalculated
+  </ResponseField>
+  
+  <ResponseField name="inningsId" type="string">
+    The innings ID that was synced
+  </ResponseField>
+  
+  <ResponseField name="matchId" type="string">
+    The match ID associated with this innings
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request POST \
+  --url 'https://api.cricpr.com/v1/sync/innings/60a7f8c8d5f3e2001f8e4e9a/batch' \
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "balls": [
+      {
+        "ball_id": "1765848428284",
+        "innings_id": "60a7f8c8d5f3e2001f8e4e9a",
+        "ball_number": 1,
+        "over_number": 0.1,
+        "ball_sequence": 1,
+        "runs": 4,
+        "extras_type": null,
+        "extras_runs": 0,
+        "wicket_type": null,
+        "dismissal_player_id": null,
+        "fielder_id": null,
+        "striker_id": "60a7f8c8d5f3e2001f8e4e9b",
+        "non_striker_id": "60a7f8c8d5f3e2001f8e4e9c",
+        "baller_id": "60a7f8c8d5f3e2001f8e4e9d",
+        "is_striker_rotated": false,
+        "ballData": {},
+        "syncStats": "pending",
+        "created_at": "2024-01-15T10:30:00Z"
+      },
+      {
+        "ball_id": "1765848428285",
+        "innings_id": "60a7f8c8d5f3e2001f8e4e9a",
+        "ball_number": 2,
+        "over_number": 0.2,
+        "ball_sequence": 2,
+        "runs": 0,
+        "extras_type": null,
+        "extras_runs": 0,
+        "wicket_type": "caught",
+        "dismissal_player_id": "60a7f8c8d5f3e2001f8e4e9b",
+        "fielder_id": "60a7f8c8d5f3e2001f8e4e9e",
+        "striker_id": "60a7f8c8d5f3e2001f8e4e9b",
+        "non_striker_id": "60a7f8c8d5f3e2001f8e4e9c",
+        "baller_id": "60a7f8c8d5f3e2001f8e4e9d",
+        "is_striker_rotated": false,
+        "ballData": {},
+        "syncStats": "pending",
+        "created_at": "2024-01-15T10:31:00Z"
+      }
+    ]
+  }'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "status": "success",
+  "data": {
+    "ballsInserted": 500,
+    "ballsSkipped": 0,
+    "ballsTotal": 500,
+    "statsRecalculated": true,
+    "inningsId": "60a7f8c8d5f3e2001f8e4e9a",
+    "matchId": "60a7f8c8d5f3e2001f8e4e8a"
+  }
+}
+```
+
+</ResponseExample>
+
+## How It Works
+
+1. **Validation**: The endpoint validates that the innings exists and is in a valid state for syncing
+2. **Deduplication**: Checks for duplicate balls using `ball_id` to prevent double-counting
+3. **Batch Insert**: Inserts all balls in the correct sequence order
+4. **Statistics**: Recalculates all innings statistics, player stats, and match scorecard
+5. **Async Updates**: Triggers background workers to update tournament and global statistics
+
+## Implementation Recommendations
+
+<Tip>
+  For best results, sync balls when the innings completes. The endpoint uses full recalculation to ensure data consistency regardless of when balls are synced.
+</Tip>
+
+### Mobile App Flow
+
+1. **During Offline Scoring**: Store balls in local SQLite with `syncStats: 'pending'`
+2. **When Innings Ends**: Check for internet connectivity
+3. **Batch Sync**: Send all unsynced balls to this endpoint
+4. **Mark as Synced**: Update local SQLite to mark balls as synced
+5. **Complete Innings**: Proceed with ending the innings
+
+### Partial Sync During Innings
+
+If internet becomes available mid-innings, you can optionally sync balls as a backup:
+
+- Sync doesn't block ongoing scoring
+- Backend handles deduplication automatically
+- Final sync at innings end ensures consistency
+
+See the [Batch Sync Guide](/api/sync/batch-sync) for detailed implementation patterns.
+
+## Error Responses
+
+<ResponseField name="400 Bad Request">
+  Invalid request data or validation errors
+  
+  ```json
+  {
+    "code": 400,
+    "message": "Balls array is required and must not be empty"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  Innings not found
+  
+  ```json
+  {
+    "code": 404,
+    "message": "Innings not found"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>

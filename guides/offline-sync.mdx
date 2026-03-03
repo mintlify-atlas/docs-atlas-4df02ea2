@@ -1,0 +1,541 @@
+---
+title: Offline sync
+description: Continue scoring cricket matches without internet and sync when back online
+---
+
+This guide explains how to implement offline scoring with batch synchronization for the CricPR API.
+
+## Overview
+
+Offline sync enables uninterrupted scoring when internet connectivity is unreliable. The system supports:
+
+1. Local storage of scoring operations
+2. Automatic sync when connection is restored
+3. Deduplication to prevent duplicate data
+4. Conflict resolution for concurrent edits
+
+## Architecture
+
+The offline sync system uses a hybrid approach:
+
+```
+┌─────────────┐
+│   Mobile    │
+│    App      │
+└──────┬──────┘
+       │
+       ├─── Online ────► REST APIs ────► MongoDB
+       │
+       └─── Offline ───► Local Queue ───► Batch Sync API ───► MongoDB
+```
+
+<Note>
+Offline sync is particularly important for cricket scoring at venues with poor connectivity, such as remote cricket grounds.
+</Note>
+
+## Implementation workflow
+
+<Steps>
+
+### Store operations locally
+
+When offline, queue scoring operations in local storage:
+
+```javascript
+const operation = {
+  type: 'recordBall',
+  timestamp: new Date().toISOString(),
+  clientId: generateClientId(), // Unique ID for deduplication
+  data: {
+    overId: '64a1234567890abcdef12380',
+    batsmanId: '64a1234567890abcdef12350',
+    runScored: 4,
+    isLegalDelivery: true,
+    // ... other ball data
+  },
+  matchId: '64a1234567890abcdef12347',
+  synced: false
+};
+
+// Store in AsyncStorage or SQLite
+await AsyncStorage.setItem('offline_queue', JSON.stringify([...queue, operation]));
+```
+
+### Detect connection
+
+Monitor network status to trigger sync:
+
+```javascript
+import NetInfo from '@react-native-community/netinfo';
+
+NetInfo.addEventListener(state => {
+  if (state.isConnected && !syncInProgress) {
+    syncQueue();
+  }
+});
+```
+
+### Fetch server state
+
+Before syncing, get current server state to detect gaps:
+
+```javascript
+GET /v1/sync/state/:matchId
+```
+
+**Response:**
+
+```json
+{
+  "matchState": {
+    "matchId": "64a1234567890abcdef12347",
+    "status": "inProgress",
+    "currentScore": 145,
+    "currentWickets": 5
+  },
+  "currentOver": {
+    "_id": "64a1234567890abcdef12380",
+    "overNumber": 18,
+    "ballCount": 4
+  },
+  "recentBalls": [
+    {
+      "_id": "64a1234567890abcdef12390",
+      "clientId": "client_123456_abc",
+      "runScored": 4,
+      "createdAt": "2024-07-15T14:30:00Z"
+    }
+  ],
+  "lastSyncTimestamp": "2024-07-15T14:30:00Z"
+}
+```
+
+### Deduplicate operations
+
+Compare local queue with server state to identify operations that need syncing:
+
+```javascript
+const toSync = [];
+const serverClientIds = new Set(
+  serverState.recentBalls.map(ball => ball.clientId).filter(id => id)
+);
+
+for (const op of localOperations) {
+  // Skip if operation timestamp is before last sync
+  if (lastSyncTimestamp && new Date(op.timestamp) <= new Date(lastSyncTimestamp)) {
+    continue; // Already synced
+  }
+
+  // Check if operation already exists on server
+  if (op.type === 'recordBall' && serverClientIds.has(op.clientId)) {
+    console.log(`Operation ${op.clientId} already exists, skipping`);
+    continue;
+  }
+
+  // Operation needs to be synced
+  toSync.push(op);
+}
+```
+
+### Sync batch
+
+Send filtered operations to the batch sync endpoint:
+
+```javascript
+POST /v1/sync/batch
+```
+
+**Request body:**
+
+```json
+{
+  "matchId": "64a1234567890abcdef12347",
+  "lastSyncTimestamp": "2024-07-15T14:30:00Z",
+  "operations": [
+    {
+      "type": "recordBall",
+      "timestamp": "2024-07-15T14:35:00Z",
+      "clientId": "client_123457_xyz",
+      "data": {
+        "overId": "64a1234567890abcdef12380",
+        "batsmanId": "64a1234567890abcdef12350",
+        "runScored": 6,
+        "isSix": true,
+        "isLegalDelivery": true
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "processed": [
+      {
+        "clientId": "client_123457_xyz",
+        "operation": "recordBall",
+        "result": "64a1234567890abcdef12391",
+        "serverTimestamp": "2024-07-15T14:35:05Z"
+      }
+    ],
+    "skipped": [
+      {
+        "clientId": "client_123456_abc",
+        "reason": "already_synced",
+        "operation": "recordBall"
+      }
+    ],
+    "conflicts": [],
+    "errors": [],
+    "lastSyncTimestamp": "2024-07-15T14:35:05Z"
+  }
+}
+```
+
+### Mark as synced
+
+Update local queue to mark synced operations:
+
+```javascript
+const syncedIds = new Set(
+  response.data.processed.map(p => p.clientId)
+);
+
+// Also mark skipped operations as synced
+response.data.skipped?.forEach(skip => {
+  if (skip.reason === 'duplicate' || skip.reason === 'already_synced') {
+    syncedIds.add(skip.clientId);
+  }
+});
+
+const updated = queue.map(op => 
+  syncedIds.has(op.clientId) ? { ...op, synced: true } : op
+);
+
+await AsyncStorage.setItem('offline_queue', JSON.stringify(updated));
+```
+
+</Steps>
+
+## Online → Offline → Online transition
+
+The system handles seamless transitions when connectivity drops mid-scoring:
+
+**Scenario:**
+1. User scores **online** → Some balls go directly to server ✅
+2. Network drops **mid-match** → User continues offline 📱
+3. Operations queued locally while offline
+4. Network returns → Sync queued operations without duplicates
+
+**How deduplication works:**
+
+From `~/workspace/source/docs/OFFLINE_SCORING_IMPLEMENTATION.md:287-395`:
+
+```javascript
+async function deduplicateOperations(matchId, operations, serverState, lastSyncTimestamp) {
+  const toSync = [];
+  const skipped = [];
+
+  // Get existing ball clientIds from server
+  const existingClientIds = new Set(
+    serverState.recentBalls
+      .map(ball => ball.clientId)
+      .filter(id => id)
+  );
+
+  for (const op of operations) {
+    // Check if operation is newer than last sync
+    if (lastSyncTimestamp && new Date(op.timestamp) <= new Date(lastSyncTimestamp)) {
+      skipped.push({
+        clientId: op.clientId,
+        reason: 'already_synced',
+        operation: op.type
+      });
+      continue;
+    }
+
+    // Check for duplicates based on clientId
+    if (op.type === 'recordBall') {
+      if (existingClientIds.has(op.clientId)) {
+        // Check if data matches
+        const existingBall = serverState.recentBalls.find(
+          b => b.clientId === op.clientId
+        );
+        
+        if (existingBall) {
+          const dataMatches = 
+            existingBall.runScored === op.data.runScored &&
+            existingBall.extras === op.data.extras;
+          
+          if (dataMatches) {
+            skipped.push({
+              clientId: op.clientId,
+              reason: 'duplicate',
+              operation: op.type
+            });
+            continue;
+          } else {
+            // Conflict detected
+            skipped.push({
+              clientId: op.clientId,
+              reason: 'conflict',
+              operation: op.type,
+              serverData: existingBall,
+              clientData: op.data
+            });
+            continue;
+          }
+        }
+      }
+    }
+
+    toSync.push(op);
+  }
+
+  return { toSync, skipped };
+}
+```
+
+<Warning>
+Always generate unique `clientId` values for each operation. Use a combination of timestamp and random string: `client_${Date.now()}_${randomString}`
+</Warning>
+
+## Batch sync for innings
+
+For complete innings recorded offline, use the innings batch sync endpoint:
+
+```javascript
+POST /v1/sync/innings/:inningsId/batch
+```
+
+**Request body:**
+
+```json
+{
+  "balls": [
+    {
+      "ball_id": "1765848428284",
+      "innings_id": "64a1234567890abcdef12370",
+      "over_number": 1,
+      "ball_sequence": 1,
+      "runs": 4,
+      "extras_type": null,
+      "extras_runs": 0,
+      "striker_id": "64a1234567890abcdef12350",
+      "non_striker_id": "64a1234567890abcdef12351",
+      "baller_id": "64a1234567890abcdef12360",
+      "created_at": "2024-07-15T14:00:00Z"
+    }
+    // ... 500 more balls
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "ballsInserted": 500,
+    "ballsSkipped": 0,
+    "statsRecalculated": true,
+    "inningsId": "64a1234567890abcdef12370",
+    "matchId": "64a1234567890abcdef12347"
+  }
+}
+```
+
+This endpoint performs full recalculation of:
+- Over statistics
+- Innings totals
+- Player batting stats
+- Player bowling stats
+- Match scorecard
+
+From `~/workspace/source/docs/OFFLINE_BATCH_SYNC_RECOMMENDATION.md:154-254`:
+
+```javascript
+async function syncInningsBalls(inningsId, balls) {
+  // Start transaction
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Group balls by over_number to create/update overs
+    const ballsByOver = groupBallsByOver(balls);
+    
+    // Get or create overs for each over_number
+    const overMap = await getOrCreateOvers(inningsId, ballsByOver, session);
+    
+    // Delete existing balls for this innings (clean slate)
+    await Ball.deleteMany(
+      { overId: { $in: Array.from(overMap.values()).map(o => o._id) } },
+      { session }
+    );
+    
+    // Insert all balls in correct order
+    const insertedBalls = await insertBallsInOrder(balls, overMap, session);
+    
+    // Update over statistics
+    await updateOversStatistics(overMap.values(), session);
+    
+    // Update innings statistics
+    await updateInningsStatistics(inningsId, session);
+    
+    // Recalculate player stats
+    await updateInningsStats(inningsId);
+    
+    // Commit transaction
+    await session.commitTransaction();
+    
+    return {
+      ballsInserted: insertedBalls.length,
+      statsRecalculated: true
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+```
+
+<Note>
+Innings batch sync uses a "delete and recalculate" strategy to ensure data consistency. This guarantees correct statistics regardless of what happened during offline scoring.
+</Note>
+
+## Conflict resolution
+
+When conflicts are detected (same operation with different data), the API returns conflict details:
+
+```json
+{
+  "conflicts": [
+    {
+      "clientId": "client_123456_abc",
+      "operation": "recordBall",
+      "serverData": {
+        "runScored": 4,
+        "extras": 0
+      },
+      "clientData": {
+        "runScored": 6,
+        "extras": 0
+      }
+    }
+  ]
+}
+```
+
+**Resolution strategies:**
+
+1. **Server wins** (recommended): Keep server data, discard client changes
+2. **Last write wins**: Use the most recent timestamp
+3. **Manual resolution**: Notify user to resolve manually
+
+## Best practices
+
+<AccordionGroup>
+
+<Accordion title="Generate unique client IDs">
+
+Always use a unique identifier for each operation:
+
+```javascript
+function generateClientId() {
+  return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+```
+
+</Accordion>
+
+<Accordion title="Track last sync timestamp">
+
+Store the last successful sync time for each match:
+
+```javascript
+await AsyncStorage.setItem(
+  `lastSyncTimestamp:${matchId}`,
+  serverResponse.lastSyncTimestamp
+);
+```
+
+</Accordion>
+
+<Accordion title="Periodic backup sync">
+
+Even during online scoring, periodically sync to backup data:
+
+```javascript
+// Sync every 5 minutes during innings
+setInterval(() => {
+  if (isOnline && unsyncedOperations.length > 0) {
+    syncQueue();
+  }
+}, 5 * 60 * 1000);
+```
+
+</Accordion>
+
+<Accordion title="Clean up synced operations">
+
+Remove old synced operations to prevent storage bloat:
+
+```javascript
+// Keep last 100 synced operations for safety
+const unsynced = queue.filter(op => !op.synced);
+const synced = queue.filter(op => op.synced).slice(-100);
+await AsyncStorage.setItem('offline_queue', JSON.stringify([...unsynced, ...synced]));
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Testing offline sync
+
+<Steps>
+
+### Test offline recording
+
+1. Enable airplane mode
+2. Record multiple balls
+3. Verify operations are queued locally
+4. Check UI shows "offline" indicator
+
+### Test sync on reconnect
+
+1. Disable airplane mode
+2. Verify automatic sync triggers
+3. Check all operations are synced
+4. Confirm UI updates with server data
+
+### Test deduplication
+
+1. Record ball online (syncs immediately)
+2. Disconnect network
+3. Record more balls (queued locally)
+4. Reconnect
+5. Verify only new balls are synced, not duplicates
+
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Real-time updates" icon="bolt" href="/guides/real-time-updates">
+  Stream live match updates via WebSocket
+</Card>
+
+<Card title="Statistics" icon="chart-line" href="/guides/statistics">
+  View recalculated statistics after sync
+</Card>
+
+</CardGroup>

@@ -1,0 +1,207 @@
+---
+title: "Admin - Manage Users"
+api: "GET /v1/admin/players"
+description: "Admin endpoint to list and filter users/players"
+---
+
+Retrieve a paginated and filterable list of all players in the system. This endpoint is restricted to admin users only.
+
+## Authentication
+
+This endpoint requires admin authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Number of players per page
+</ParamField>
+
+<ParamField query="name" type="string">
+  Filter by player name (partial match)
+</ParamField>
+
+<ParamField query="city" type="string">
+  Filter by city
+</ParamField>
+
+<ParamField query="battingStyle" type="string">
+  Filter by batting style. Options:
+  - `Left-hand bat`
+  - `Right-hand bat`
+  - `none`
+</ParamField>
+
+<ParamField query="bowlingStyle" type="string">
+  Filter by bowling style. Options:
+  - `Right-arm fast`
+  - `Right-arm medium`
+  - `Left-arm fast`
+  - `Left-arm medium`
+  - `Slow left-arm orthodox`
+  - `Slow left-arm chinaman`
+  - `Right-arm Off Break`
+  - `Right-arm Leg Break`
+  - `none`
+</ParamField>
+
+<ParamField query="role" type="string">
+  Filter by playing role. Options:
+  - `Top-order batter`
+  - `Middle-order batter`
+  - `Lower-order batter`
+  - `Opening batter`
+  - `Wicket-keeper batter`
+  - `Wicket-keeper`
+  - `Bowler`
+  - `All-rounder`
+  - `none`
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of player objects
+  
+  <ResponseField name="id" type="string">
+    Player/User ID
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Player name
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    Player email
+  </ResponseField>
+  
+  <ResponseField name="phone" type="string">
+    Player phone number
+  </ResponseField>
+  
+  <ResponseField name="city" type="string">
+    Player city
+  </ResponseField>
+  
+  <ResponseField name="battingStyle" type="string">
+    Batting style
+  </ResponseField>
+  
+  <ResponseField name="bowlingStyle" type="string">
+    Bowling style
+  </ResponseField>
+  
+  <ResponseField name="playingRole" type="string">
+    Playing role
+  </ResponseField>
+  
+  <ResponseField name="isVerified" type="boolean">
+    Player verification status
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Account status (active, deactivated, deleted)
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    Account creation timestamp
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of players
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/admin/players?page=1&limit=20&city=Karachi&role=All-rounder' \
+  --header 'Authorization: Bearer YOUR_ADMIN_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "results": [
+    {
+      "id": "60a7f8c8d5f3e2001f8e4e7d",
+      "name": "John Smith",
+      "email": "john.smith@example.com",
+      "phone": "+1234567890",
+      "city": "Karachi",
+      "battingStyle": "Right-hand bat",
+      "bowlingStyle": "Right-arm medium",
+      "playingRole": "All-rounder",
+      "isVerified": true,
+      "status": "active",
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": "60a7f8c8d5f3e2001f8e4e7e",
+      "name": "Sarah Ahmed",
+      "email": "sarah.ahmed@example.com",
+      "phone": "+923001234567",
+      "city": "Karachi",
+      "battingStyle": "Left-hand bat",
+      "bowlingStyle": "Slow left-arm orthodox",
+      "playingRole": "All-rounder",
+      "isVerified": true,
+      "status": "active",
+      "createdAt": "2024-01-14T08:20:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "totalPages": 5,
+  "totalResults": 87
+}
+```
+
+</ResponseExample>
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403 Forbidden">
+  User is not an admin
+  
+  ```json
+  {
+    "code": 403,
+    "message": "Admin access required"
+  }
+  ```
+</ResponseField>

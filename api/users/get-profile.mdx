@@ -1,0 +1,179 @@
+---
+title: "Get User Profile"
+api: "GET /v1/users/:userId"
+description: "Retrieve a user's profile information"
+---
+
+Fetch detailed profile information for a specific user. Regular users can only fetch their own profile, while admins can fetch any user's profile.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="userId" type="string" required>
+  The unique identifier of the user. Use your own user ID to fetch your profile.
+</ParamField>
+
+## Query Parameters
+
+<ParamField query="statusFilter" type="string" default="not_deleted">
+  Filter users by status. Options:
+  - `active` - Only active users
+  - `not_deleted` - Exclude deleted users
+  - `all` - Include all users (admin only)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  User ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  User's full name
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  User's email address
+</ResponseField>
+
+<ResponseField name="phone" type="string">
+  User's phone number
+</ResponseField>
+
+<ResponseField name="city" type="string">
+  User's city
+</ResponseField>
+
+<ResponseField name="dob" type="string">
+  Date of birth (ISO 8601 format)
+</ResponseField>
+
+<ResponseField name="gender" type="string">
+  User's gender (male, female, prefer not to say)
+</ResponseField>
+
+<ResponseField name="profilePicture" type="string">
+  URL to the user's profile picture
+</ResponseField>
+
+<ResponseField name="isEmailVerified" type="boolean">
+  Whether the email has been verified
+</ResponseField>
+
+<ResponseField name="isPhoneVerified" type="boolean">
+  Whether the phone number has been verified
+</ResponseField>
+
+<ResponseField name="provider" type="string">
+  Authentication provider (e.g., local, google, facebook)
+</ResponseField>
+
+<ResponseField name="roles" type="array">
+  Array of user roles with permissions
+</ResponseField>
+
+<ResponseField name="playerProfile" type="object">
+  Cricket player profile information
+  
+  <ResponseField name="battingStyle" type="string">
+    Batting style (e.g., Left-hand bat, Right-hand bat)
+  </ResponseField>
+  
+  <ResponseField name="bowlingStyle" type="string">
+    Bowling style (e.g., Right-arm fast, Slow left-arm orthodox)
+  </ResponseField>
+  
+  <ResponseField name="playingRole" type="string">
+    Playing role (e.g., All-rounder, Top-order batter)
+  </ResponseField>
+  
+  <ResponseField name="isVerified" type="boolean">
+    Whether the player profile is verified
+  </ResponseField>
+  
+  <ResponseField name="status" type="string">
+    Player status (active, inactive)
+  </ResponseField>
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/users/60a7f8c8d5f3e2001f8e4e7d' \
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "id": "60a7f8c8d5f3e2001f8e4e7d",
+  "name": "John Smith",
+  "email": "john.smith@example.com",
+  "phone": "+1234567890",
+  "city": "Karachi",
+  "dob": "1995-06-15T00:00:00.000Z",
+  "gender": "male",
+  "profilePicture": "https://res.cloudinary.com/example/image/upload/v1/profile.jpg",
+  "isEmailVerified": true,
+  "isPhoneVerified": true,
+  "provider": "local",
+  "roles": [
+    {
+      "_id": "68823dd038118a0df22b0744",
+      "name": "user",
+      "permissions": [
+        {
+          "_id": "68823dd038118a0df22b0739",
+          "resource": "user",
+          "action": "update"
+        }
+      ]
+    }
+  ],
+  "playerProfile": {
+    "battingStyle": "Right-hand bat",
+    "bowlingStyle": "Right-arm medium",
+    "playingRole": "All-rounder",
+    "isVerified": true,
+    "status": "active",
+    "userId": "60a7f8c8d5f3e2001f8e4e7d"
+  }
+}
+```
+
+</ResponseExample>
+
+## Error Responses
+
+<ResponseField name="403 Forbidden">
+  User does not have permission to access this profile
+  
+  ```json
+  {
+    "code": 403,
+    "message": "Access denied"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  User not found
+  
+  ```json
+  {
+    "code": 404,
+    "message": "User not found"
+  }
+  ```
+</ResponseField>

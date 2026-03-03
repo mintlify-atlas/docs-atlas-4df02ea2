@@ -1,0 +1,37 @@
+---
+title: 'Delete Player'
+api: 'DELETE /v1/players/:playerId'
+---
+
+Delete a player profile.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="playerId" type="string" required>
+  The ID of the player to delete
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE https://api.cricpr.com/v1/players/688cb06818c2232abefa254e \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```text Response
+204 No Content
+```
+</ResponseExample>

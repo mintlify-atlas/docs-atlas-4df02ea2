@@ -1,0 +1,116 @@
+---
+title: 'List Tournaments'
+api: 'GET /v1/tournaments'
+---
+
+Retrieve a paginated list of tournaments with optional filters.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="organizerId" type="string">
+  Filter by organizer ID
+</ParamField>
+
+<ParamField query="organizerType" type="string">
+  Filter by organizer type. One of: `user`, `player`
+</ParamField>
+
+<ParamField query="city" type="string">
+  Filter by city
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status. One of: `upcoming`, `ongoing`, `completed`, `cancelled`
+</ParamField>
+
+<ParamField query="format" type="string">
+  Filter by format. One of: `round_robin`, `knockout`, `hybrid`, `point_based`
+</ParamField>
+
+<ParamField query="isPublic" type="boolean">
+  Filter by public visibility
+</ParamField>
+
+<ParamField query="participant" type="boolean">
+  Filter tournaments where the authenticated user is a participant (legacy parameter)
+</ParamField>
+
+<ParamField query="participated" type="boolean">
+  Filter tournaments where the authenticated user has participated (default: false)
+</ParamField>
+
+<ParamField query="past" type="boolean">
+  Include past matches in the results
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Sort field in format `field:(asc|desc)`. Default: `createdAt:desc`
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of items per page
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of tournament objects
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of tournaments
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.cricpr.com/v1/tournaments?city=Karachi&status=upcoming&limit=10&page=1" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "results": [
+    {
+      "id": "60d5ec49f1b2c8b1f8e4e1a2",
+      "name": "Summer Cricket Championship 2024",
+      "city": "Karachi",
+      "startDate": "2024-06-01T00:00:00.000Z",
+      "endDate": "2024-06-15T00:00:00.000Z",
+      "format": "round_robin",
+      "status": "upcoming",
+      "maxTeams": 16
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1,
+  "totalResults": 1
+}
+```
+</ResponseExample>

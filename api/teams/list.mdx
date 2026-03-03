@@ -1,0 +1,105 @@
+---
+title: 'List Teams'
+api: 'GET /v1/teams'
+---
+
+Retrieve a paginated list of teams with optional filters.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="name" type="string">
+  Filter by team name
+</ParamField>
+
+<ParamField query="location" type="string">
+  Filter by location
+</ParamField>
+
+<ParamField query="captain" type="string">
+  Filter by captain player ID
+</ParamField>
+
+<ParamField query="myteam" type="boolean">
+  Filter teams where the authenticated user is a member or creator
+</ParamField>
+
+<ParamField query="opponents" type="boolean">
+  Filter teams that the authenticated user has played against (takes precedence over myteam)
+</ParamField>
+
+<ParamField query="createdBy" type="string">
+  Filter by creator player ID
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Sort field in format `field:(asc|desc)`
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of items per page
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of team objects
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of teams
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.cricpr.com/v1/teams?location=Karachi&limit=10&page=1" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "results": [
+    {
+      "id": "688a38f0fea3456a96402a30",
+      "name": "Atnest 11",
+      "location": "Karachi, Pakistan",
+      "logo": "https://example.com/logo.png",
+      "captain": {
+        "id": "688cb06818c2232abefa254e",
+        "userId": "6887d2f86e607c4c48b33c65"
+      },
+      "createdBy": "688cb06818c2232abefa254e"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1,
+  "totalResults": 1
+}
+```
+</ResponseExample>

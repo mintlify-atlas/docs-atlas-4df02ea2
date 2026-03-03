@@ -1,0 +1,115 @@
+---
+title: 'Create Team'
+api: 'POST /v1/teams'
+---
+
+Create a new team.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  Team name
+</ParamField>
+
+<ParamField body="location" type="string" required>
+  Team location
+</ParamField>
+
+<ParamField body="logo" type="string">
+  Team logo URL
+</ParamField>
+
+<ParamField body="players" type="array">
+  Array of player IDs
+</ParamField>
+
+<ParamField body="captain" type="string">
+  Captain player ID (must be from the players array)
+</ParamField>
+
+<ParamField body="includeMyself" type="boolean">
+  Automatically add the authenticated user's player profile to the team
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Team ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Team name
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Team location
+</ResponseField>
+
+<ResponseField name="logo" type="string">
+  Team logo URL
+</ResponseField>
+
+<ResponseField name="captain" type="object">
+  Captain player details
+</ResponseField>
+
+<ResponseField name="players" type="array">
+  Array of player objects
+</ResponseField>
+
+<ResponseField name="createdBy" type="string">
+  Player ID of the creator
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.cricpr.com/v1/teams \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Atnest 11",
+    "logo": "https://example.com/logo.png",
+    "location": "Karachi, Pakistan",
+    "players": [
+      "688cb06818c2232abefa254e",
+      "688ca807fd71e61ed611f227",
+      "688cb1e218c2232abefa2584"
+    ],
+    "captain": "688cb06818c2232abefa254e",
+    "includeMyself": true
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688a38f0fea3456a96402a30",
+  "name": "Atnest 11",
+  "logo": "https://example.com/logo.png",
+  "location": "Karachi, Pakistan",
+  "captain": {
+    "id": "688cb06818c2232abefa254e",
+    "userId": "6887d2f86e607c4c48b33c65",
+    "battingStyle": "Left-hand bat",
+    "bowlingStyle": "Slow left-arm orthodox"
+  },
+  "players": [
+    {
+      "id": "688cb06818c2232abefa254e",
+      "userId": "6887d2f86e607c4c48b33c65",
+      "shortName": "John Doe"
+    }
+  ],
+  "createdBy": "688cb06818c2232abefa254e"
+}
+```
+</ResponseExample>

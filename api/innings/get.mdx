@@ -1,0 +1,123 @@
+---
+title: 'Get All Innings'
+api: 'GET /v1/innings'
+---
+
+Retrieve a paginated list of innings with optional filtering.
+
+## Query Parameters
+
+<ParamField query="matchId" type="string">
+  Filter innings by match ID
+</ParamField>
+
+<ParamField query="battingTeam" type="string">
+  Filter by batting team ID
+</ParamField>
+
+<ParamField query="bowlingTeam" type="string">
+  Filter by bowling team ID
+</ParamField>
+
+<ParamField query="inningsNumber" type="integer">
+  Filter by innings number (1-4)
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by innings status
+  - `pending`
+  - `inProgress`
+  - `completed`
+</ParamField>
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default="10">
+  Number of results per page
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Sort field in format: `field:(asc|desc)`. Example: `createdAt:desc`
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of innings objects
+  <ResponseField name="id" type="string">
+    Innings ID
+  </ResponseField>
+  <ResponseField name="matchId" type="string">
+    Match ID
+  </ResponseField>
+  <ResponseField name="battingTeam" type="string">
+    Batting team ID
+  </ResponseField>
+  <ResponseField name="bowlingTeam" type="string">
+    Bowling team ID
+  </ResponseField>
+  <ResponseField name="inningsNumber" type="integer">
+    Innings number (1-4)
+  </ResponseField>
+  <ResponseField name="status" type="string">
+    Current status: `pending`, `inProgress`, or `completed`
+  </ResponseField>
+  <ResponseField name="totalRuns" type="integer">
+    Total runs scored
+  </ResponseField>
+  <ResponseField name="totalWickets" type="integer">
+    Total wickets fallen (0-10)
+  </ResponseField>
+  <ResponseField name="totalOvers" type="number">
+    Total overs bowled
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Results per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of results
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.cricpr.com/v1/innings?matchId=507f1f77bcf86cd799439011&status=completed&limit=20" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "results": [
+    {
+      "id": "507f1f77bcf86cd799439020",
+      "matchId": "507f1f77bcf86cd799439011",
+      "battingTeam": "507f1f77bcf86cd799439012",
+      "bowlingTeam": "507f1f77bcf86cd799439013",
+      "inningsNumber": 1,
+      "status": "completed",
+      "totalRuns": 185,
+      "totalWickets": 7,
+      "totalOvers": 20
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "totalPages": 1,
+  "totalResults": 1
+}
+```

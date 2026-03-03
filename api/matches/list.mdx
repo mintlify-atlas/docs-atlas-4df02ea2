@@ -1,0 +1,142 @@
+---
+title: "List Matches"
+api: "GET /v1/matches"
+---
+
+Retrieve a paginated list of matches with optional filtering.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Query Parameters
+
+<ParamField query="status" type="string">
+  Filter by match status or outcome
+  - `inProgress` - Matches currently in progress
+  - `played` - All completed matches
+  - `completed` - Completed matches
+  - `won` - Matches won by the authenticated user
+  - `loss` - Matches lost by the authenticated user
+  - `tied` - Tied matches
+  - `scoring` - Matches where user is scoring
+</ParamField>
+
+<ParamField query="mymatches" type="boolean">
+  Filter matches where the authenticated user participated
+</ParamField>
+
+<ParamField query="playerId" type="string">
+  Filter matches by a specific player ID
+</ParamField>
+
+<ParamField query="liveMatches" type="boolean">
+  Filter for live matches only
+</ParamField>
+
+<ParamField query="scheduled" type="boolean" default={false}>
+  Filter for scheduled/upcoming matches
+</ParamField>
+
+<ParamField query="page" type="integer" default={1}>
+  Page number for pagination (minimum: 1)
+</ParamField>
+
+<ParamField query="limit" type="integer" default={10}>
+  Number of items per page (minimum: 1, maximum: 100)
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of match objects
+  <ResponseField name="_id" type="string">
+    Match ID
+  </ResponseField>
+  <ResponseField name="title" type="string">
+    Match title
+  </ResponseField>
+  <ResponseField name="status" type="string">
+    Match status: `pending`, `inProgress`, `completed`, `cancelled`, `postponed`
+  </ResponseField>
+  <ResponseField name="startdatetime" type="string">
+    Match start date and time
+  </ResponseField>
+  <ResponseField name="endDateTime" type="string">
+    Match end date and time (if completed)
+  </ResponseField>
+  <ResponseField name="location" type="string">
+    Match location
+  </ResponseField>
+  <ResponseField name="matchCategory" type="string">
+    Match category
+  </ResponseField>
+  <ResponseField name="teamAInstanceId" type="object">
+    Team A instance with players array (includes guest players)
+  </ResponseField>
+  <ResponseField name="teamBInstanceId" type="object">
+    Team B instance with players array (includes guest players)
+  </ResponseField>
+  <ResponseField name="matchConfigId" type="object">
+    Match configuration details
+  </ResponseField>
+  <ResponseField name="tossWinnerTeamInstanceId" type="object">
+    Team that won the toss (if toss completed)
+  </ResponseField>
+  <ResponseField name="tossDecision" type="string">
+    Toss decision: `bat` or `bowl`
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of matches matching the filter
+</ResponseField>
+
+## Example Request
+
+```bash
+# Get all in-progress matches
+curl -X GET "https://api.cricpr.com/v1/matches?status=inProgress&page=1&limit=10" \
+  -H "Authorization: Bearer {token}"
+```
+
+```bash
+# Get my completed matches
+curl -X GET "https://api.cricpr.com/v1/matches?mymatches=true&status=completed" \
+  -H "Authorization: Bearer {token}"
+```
+
+```bash
+# Get scheduled matches
+curl -X GET "https://api.cricpr.com/v1/matches?scheduled=true" \
+  -H "Authorization: Bearer {token}"
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid query parameters
+  - Invalid page or limit value
+  - Invalid status value
+  - Invalid player ID format
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Missing or invalid authentication token
+</ResponseField>

@@ -1,0 +1,187 @@
+---
+title: "Create Match"
+api: "POST /v1/matches"
+---
+
+Create a new cricket match with specified teams and configuration.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Request Body
+
+<ParamField body="teamA" type="string" required>
+  Team A ID (MongoDB ObjectId)
+</ParamField>
+
+<ParamField body="teamB" type="string" required>
+  Team B ID (MongoDB ObjectId)
+</ParamField>
+
+<ParamField body="title" type="string" required>
+  Match title
+</ParamField>
+
+<ParamField body="startdatetime" type="string" required>
+  Match start date and time in ISO 8601 format
+</ParamField>
+
+<ParamField body="location" type="string">
+  Match location or venue
+</ParamField>
+
+<ParamField body="matchCategory" type="string">
+  Match category (e.g., "friendly", "tournament")
+</ParamField>
+
+<ParamField body="overs" type="integer" required>
+  Number of overs for the match (minimum: 1)
+</ParamField>
+
+<ParamField body="matchType" type="string" required>
+  Type of match format
+  - `test` - Test match (2-5 days, unlimited overs per bowler)
+  - `odi` - One Day International (50 overs, 10 overs per bowler)
+  - `t20` - Twenty20 (20 overs, 4 overs per bowler)
+  - `limitedOvers` - Custom limited overs format
+</ParamField>
+
+<ParamField body="ballType" type="string">
+  Type of ball used in the match
+  - `leather`
+  - `tennis`
+  - `other`
+</ParamField>
+
+<ParamField body="pitchType" type="string">
+  Type of pitch surface
+  - `rough`
+  - `cement`
+  - `turf`
+  - `astroturf`
+  - `matting`
+  - `other`
+</ParamField>
+
+<ParamField body="noOfDays" type="integer" required>
+  Number of days for the match (1-5)
+</ParamField>
+
+<ParamField body="oversPerBowler" type="integer" required>
+  Maximum overs a bowler can bowl (0 for unlimited in Test matches)
+</ParamField>
+
+<ParamField body="showWagonWheel" type="boolean" default={false}>
+  Whether to display wagon wheel visualization
+</ParamField>
+
+## Match Type Validation Rules
+
+### Test Match
+- `noOfDays`: 2-5 days
+- `oversPerBowler`: Must be 0 (unlimited)
+
+### ODI Match
+- `overs`: Must be 50
+- `noOfDays`: Must be 1
+- `oversPerBowler`: Must be 10
+
+### T20 Match
+- `overs`: Must be 20
+- `noOfDays`: Must be 1
+- `oversPerBowler`: Must be 4
+
+### Limited Overs Match
+- `noOfDays`: Must be 1
+- `oversPerBowler`: Cannot exceed total overs
+
+## Response
+
+<ResponseField name="_id" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="teamA" type="string">
+  Team A ID
+</ResponseField>
+
+<ResponseField name="teamB" type="string">
+  Team B ID
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Match title
+</ResponseField>
+
+<ResponseField name="startdatetime" type="string">
+  Match start date and time
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Match location
+</ResponseField>
+
+<ResponseField name="matchCategory" type="string">
+  Match category
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Match status: `pending`, `inProgress`, `completed`, `cancelled`, `postponed`
+</ResponseField>
+
+<ResponseField name="matchConfigId" type="object">
+  Match configuration object containing overs, matchType, ballType, pitchType, noOfDays, oversPerBowler
+</ResponseField>
+
+<ResponseField name="teamsRegistered" type="boolean">
+  Whether teams have been registered for this match
+</ResponseField>
+
+<ResponseField name="createdBy" type="string">
+  User ID who created the match
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.cricpr.com/v1/matches \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "teamA": "688a38f0fea3456a96402a30",
+    "teamB": "688cb3a018c2232abefa2603",
+    "title": "Codefied vs Techvaders",
+    "startdatetime": "2025-08-01T18:18:09.882Z",
+    "location": "Karachi",
+    "matchCategory": "friendly",
+    "overs": 5,
+    "matchType": "limitedOvers",
+    "ballType": "tennis",
+    "pitchType": "matting",
+    "noOfDays": 1,
+    "oversPerBowler": 1
+  }'
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid input data or validation failed
+  - Missing required fields
+  - Invalid match type configuration (e.g., T20 must have 20 overs)
+  - Both teams must have equal number of players
+  - Overs per bowler exceeds total overs
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Team A or Team B not found
+</ResponseField>

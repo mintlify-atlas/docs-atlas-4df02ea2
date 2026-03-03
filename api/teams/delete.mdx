@@ -1,0 +1,37 @@
+---
+title: 'Delete Team'
+api: 'DELETE /v1/teams/:teamId'
+---
+
+Delete a team.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="teamId" type="string" required>
+  The ID of the team to delete
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE https://api.cricpr.com/v1/teams/688a38f0fea3456a96402a30 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```text Response
+204 No Content
+```
+</ResponseExample>

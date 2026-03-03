@@ -1,0 +1,98 @@
+---
+title: 'Search Players'
+api: 'GET /v1/players/search'
+---
+
+Search for players by name, email, phone, or other attributes.
+
+## Query Parameters
+
+<ParamField query="query" type="string">
+  Search query (searches in name, email, phone, shortName, role, battingStyle, bowlingStyle)
+</ParamField>
+
+<ParamField query="phone" type="string">
+  Exact phone number search (takes precedence over query parameter)
+</ParamField>
+
+<ParamField query="statusFilter" type="string">
+  Filter by status. One of: `active`, `not_deleted`, `all`. Default: `not_deleted`
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page (min: 1, max: 100, default: 20)
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number for pagination (min: 1, default: 1)
+</ParamField>
+
+## Response
+
+<ResponseField name="players" type="array">
+  Array of player objects matching the search criteria
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  Pagination information
+  <ResponseField name="currentPage" type="integer">
+    Current page number
+  </ResponseField>
+  <ResponseField name="totalPages" type="integer">
+    Total number of pages
+  </ResponseField>
+  <ResponseField name="totalPlayers" type="integer">
+    Total number of players found
+  </ResponseField>
+  <ResponseField name="hasNextPage" type="boolean">
+    Whether there is a next page
+  </ResponseField>
+  <ResponseField name="hasPrevPage" type="boolean">
+    Whether there is a previous page
+  </ResponseField>
+  <ResponseField name="limit" type="integer">
+    Number of results per page
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="searchQuery" type="string">
+  The search query used
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.cricpr.com/v1/players/search?query=john&limit=10&page=1"
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "players": [
+    {
+      "id": "688cb06818c2232abefa254e",
+      "userId": {
+        "id": "6887d2f86e607c4c48b33c65",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "shortName": "Johnny",
+      "battingStyle": "Left-hand bat",
+      "bowlingStyle": "Slow left-arm orthodox",
+      "primaryRole": "All-rounder",
+      "isVerified": false,
+      "status": "active"
+    }
+  ],
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 1,
+    "totalPlayers": 1,
+    "hasNextPage": false,
+    "hasPrevPage": false,
+    "limit": 10
+  },
+  "searchQuery": "john"
+}
+```
+</ResponseExample>

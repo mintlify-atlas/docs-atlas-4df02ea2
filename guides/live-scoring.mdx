@@ -1,0 +1,406 @@
+---
+title: Live scoring
+description: Record balls, wickets, and manage overs during live cricket matches
+---
+
+This guide covers the complete workflow for live scoring during a cricket match.
+
+## Overview
+
+Live scoring involves:
+
+1. Starting an over with bowler and batsmen
+2. Recording each ball with runs, extras, and wickets
+3. Managing strike rotation and batsman changes
+4. Ending overs and innings
+
+<Steps>
+
+### Start an over
+
+Begin a new over by specifying the bowler and batsmen:
+
+```javascript
+POST /v1/overs/start
+```
+
+**Request body:**
+
+```json
+{
+  "inningId": "64a1234567890abcdef12370",
+  "bowlerId": "64a1234567890abcdef12360",
+  "batsmanId": "64a1234567890abcdef12350",
+  "nonStrikerId": "64a1234567890abcdef12351"
+}
+```
+
+**Response:**
+
+```json
+{
+  "_id": "64a1234567890abcdef12380",
+  "inningId": "64a1234567890abcdef12370",
+  "bowlerId": "64a1234567890abcdef12360",
+  "overNumber": 1,
+  "balls": [],
+  "ballCount": 0,
+  "meta": {
+    "batsmanId": "64a1234567890abcdef12350",
+    "nonStrikerId": "64a1234567890abcdef12351"
+  }
+}
+```
+
+### Record a ball
+
+Record each delivery with runs, extras, and wicket information:
+
+```javascript
+POST /v1/balls/record
+```
+
+**Request body:**
+
+```json
+{
+  "ballId": "unique-client-generated-id",
+  "overId": "64a1234567890abcdef12380",
+  "batsmanId": "64a1234567890abcdef12350",
+  "nonStrikerId": "64a1234567890abcdef12351",
+  "bowlerId": "64a1234567890abcdef12360",
+  "runScored": 4,
+  "isFour": true,
+  "isSix": false,
+  "extras": 0,
+  "extraType": null,
+  "isNoBall": false,
+  "isLegalDelivery": true,
+  "wicketPlayerOut": null,
+  "direction": "cover",
+  "angle": 45,
+  "distance": 65
+}
+```
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "_id": "64a1234567890abcdef12390",
+    "ballNumber": 1,
+    "runScored": 4,
+    "overId": "64a1234567890abcdef12380"
+  }
+}
+```
+
+From `src/services/ball.service.js:40-258`:
+
+```javascript
+async function recordBall(data) {
+  const { ballId, overId, batsmanId, nonStrikerId, bowlerId, 
+          runScored, extras, isLegalDelivery, wicketPlayerOut } = data;
+
+  // Validate over exists and is not ended
+  const over = await Overs.findById(overId).lean();
+  if (!over) throw new ApiError(404, 'Over not found');
+  if (over.endTime) throw new ApiError(400, 'Cannot record ball in ended over');
+
+  // Calculate ball number
+  const ballNumber = (over.balls?.length || 0) + 1;
+
+  // Create ball with all required fields
+  const ball = new Ball({
+    overId,
+    batsmanId,
+    nonStrikerId,
+    bowlerId,
+    runScored,
+    extras,
+    isLegalDelivery,
+    ballNumber,
+    meta: { ballId }
+  });
+
+  // Handle dismissal if wicket was taken
+  if (wicketPlayerOut) {
+    const dismissal = await Dismissal.create({
+      ballId: ball._id,
+      type: outType,
+      dismissedPlayerId: wicketPlayerOut,
+      bowlerId,
+      fielderId
+    });
+    ball.dismissalId = dismissal._id;
+  }
+
+  await ball.save();
+
+  // Calculate strike rotation
+  const { newStrikerId, newNonStrikerId } = calculateBatsmanPositions(ball);
+
+  // Update over with new ball and updated positions
+  await Overs.updateOverWithBalls(
+    overId,
+    [...over.balls, ball._id],
+    ball,
+    { $set: { 'meta.batsmanId': newStrikerId, 'meta.nonStrikerId': newNonStrikerId } }
+  );
+}
+```
+
+<Note>
+The `ballId` field is a client-generated unique ID used for offline sync deduplication. It should be unique across all balls in the match.
+</Note>
+
+### Record a wicket
+
+When recording a wicket, include dismissal details:
+
+```json
+{
+  "ballId": "unique-client-id-2",
+  "overId": "64a1234567890abcdef12380",
+  "batsmanId": "64a1234567890abcdef12350",
+  "bowlerId": "64a1234567890abcdef12360",
+  "runScored": 0,
+  "isLegalDelivery": true,
+  "wicketPlayerOut": "64a1234567890abcdef12350",
+  "outType": "caught",
+  "dismissalType": "caught",
+  "fielderId": "64a1234567890abcdef12365",
+  "nextBatsmanId": "64a1234567890abcdef12352"
+}
+```
+
+### Record extras
+
+Different types of extras:
+
+<CodeGroup>
+
+```json Wide
+{
+  "runScored": 0,
+  "extras": 1,
+  "extraType": "wide",
+  "isLegalDelivery": false
+}
+```
+
+```json No Ball
+{
+  "runScored": 1,
+  "extras": 1,
+  "extraType": "noBall",
+  "isNoBall": true,
+  "isLegalDelivery": false,
+  "isFreeHit": true
+}
+```
+
+```json Bye
+{
+  "runScored": 0,
+  "extras": 4,
+  "extraType": "bye",
+  "isLegalDelivery": true
+}
+```
+
+```json Leg Bye
+{
+  "runScored": 0,
+  "extras": 2,
+  "extraType": "legBye",
+  "isLegalDelivery": true
+}
+```
+
+</CodeGroup>
+
+### End an over
+
+Once 6 legal deliveries are bowled, end the over:
+
+```javascript
+PUT /v1/overs/end/:overId
+```
+
+**Response:**
+
+```json
+{
+  "status": "success",
+  "data": {
+    "_id": "64a1234567890abcdef12380",
+    "endTime": "2024-07-15T14:15:00Z",
+    "ballCount": 6,
+    "runsInOver": 8,
+    "wicketsInOver": 1
+  }
+}
+```
+
+<Note>
+After ending an over, batsmen automatically swap positions for the next over.
+</Note>
+
+### End an innings
+
+When an innings is complete, end it with summary information:
+
+```javascript
+POST /v1/innings/:inningsId/end
+```
+
+**Request body:**
+
+```json
+{
+  "endType": "allOut",
+  "totalRuns": 165,
+  "totalWickets": 10,
+  "totalOvers": 18.4
+}
+```
+
+</Steps>
+
+## Strike rotation
+
+The API automatically handles strike rotation based on these rules:
+
+1. **Odd runs**: Batsmen swap on 1, 3, 5 runs (unless boundary)
+2. **Even runs**: Batsmen remain in position on 0, 2 runs
+3. **Boundaries**: No rotation on fours and sixes
+4. **End of over**: Batsmen swap positions
+5. **No ball + bye/leg bye**: Rotation based on bye runs only
+
+From `src/services/ball.service.js:15-38`:
+
+```javascript
+function calculateBatsmanPositions(ball) {
+  let newStrikerId = ball.batsmanId;
+  let newNonStrikerId = ball.nonStrikerId;
+
+  let runsForRotation;
+
+  // Special case: No Ball + Bye/Leg Bye
+  if (ball.isNoBall && (ball.extraType === 'bye' || ball.extraType === 'legBye')) {
+    runsForRotation = Math.max(0, (ball.extras || 0) - 1);
+  } else {
+    runsForRotation = ball.runScored || 0;
+  }
+
+  // Swap on odd runs (unless boundary)
+  if (!ball.isFour && !ball.isSix && runsForRotation > 0 && runsForRotation % 2 === 1) {
+    newStrikerId = ball.nonStrikerId;
+    newNonStrikerId = ball.batsmanId;
+  }
+
+  return { newStrikerId, newNonStrikerId };
+}
+```
+
+## Special dismissals
+
+### Mankading
+
+For mankading (non-striker run out), the ball doesn't count as a legal delivery:
+
+```json
+{
+  "outType": "Mankading",
+  "wicketPlayerOut": "64a1234567890abcdef12351",
+  "nextBatsmanId": "64a1234567890abcdef12352",
+  "isLegalDelivery": false,
+  "runScored": 0
+}
+```
+
+### Retired hurt
+
+For retired hurt, no ball is recorded - only batsman replacement:
+
+```json
+{
+  "outType": "Retired hurt",
+  "wicketPlayerOut": "64a1234567890abcdef12350",
+  "nextBatsmanId": "64a1234567890abcdef12352"
+}
+```
+
+### Caught and bowled
+
+For caught and bowled, the fielder is automatically set to the bowler:
+
+```json
+{
+  "outType": "Caught & Bowled",
+  "wicketPlayerOut": "64a1234567890abcdef12350",
+  "fielderId": null  // Automatically set to bowler
+}
+```
+
+## Update or undo a ball
+
+To correct a scoring mistake:
+
+<CodeGroup>
+
+```javascript Update Ball
+PUT /v1/balls/update/:ballId
+
+{
+  "runScored": 6,
+  "isSix": true,
+  "isFour": false
+}
+```
+
+```javascript Undo Ball
+DELETE /v1/balls/undo/:ballId
+```
+
+</CodeGroup>
+
+<Warning>
+Undoing a ball recalculates all subsequent statistics. Use with caution during live matches.
+</Warning>
+
+## Wagon wheel tracking
+
+Track shot placement for wagon wheel visualization:
+
+```json
+{
+  "direction": "cover",
+  "angle": 45,
+  "distance": 65
+}
+```
+
+**Shot directions:**
+- `straight`, `mid-on`, `mid-off`, `cover`, `point`, `third-man`, `fine-leg`, `square-leg`, `mid-wicket`
+
+**Angle:** 0-360 degrees from straight
+
+**Distance:** Meters from the batting crease
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Offline sync" icon="wifi-slash" href="/guides/offline-sync">
+  Continue scoring without internet
+</Card>
+
+<Card title="Real-time updates" icon="bolt" href="/guides/real-time-updates">
+  Subscribe to live match events
+</Card>
+
+</CardGroup>

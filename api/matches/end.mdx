@@ -1,0 +1,155 @@
+---
+title: "End Match"
+api: "POST /v1/matches/{matchId}/end"
+---
+
+End a match and finalize the result. This marks the match as completed and calculates the final outcome.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  Match ID (MongoDB ObjectId)
+</ParamField>
+
+## Request Body
+
+The request body is optional. Additional data for match completion can be provided if needed.
+
+## Response
+
+Returns the updated Match object with status changed to `completed` and end time recorded.
+
+<ResponseField name="_id" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Match status (set to `completed`)
+</ResponseField>
+
+<ResponseField name="endDateTime" type="string">
+  Timestamp when match was ended
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Match title
+</ResponseField>
+
+<ResponseField name="startdatetime" type="string">
+  Match start date and time
+</ResponseField>
+
+<ResponseField name="teamAInstanceId" type="object">
+  Team A instance with final player list and configuration
+</ResponseField>
+
+<ResponseField name="teamBInstanceId" type="object">
+  Team B instance with final player list and configuration
+</ResponseField>
+
+<ResponseField name="matchConfigId" type="object">
+  Match configuration
+</ResponseField>
+
+<ResponseField name="tossWinnerTeamInstanceId" type="object">
+  Team that won the toss
+</ResponseField>
+
+<ResponseField name="tossDecision" type="string">
+  Toss decision: `bat` or `bowl`
+</ResponseField>
+
+## Prerequisites
+
+Before ending a match:
+1. Match must exist and have `status: inProgress`
+2. Match must have been started (toss completed)
+3. At least one innings should be completed
+
+## What Happens When Match Ends
+
+1. Match status changes from `inProgress` to `completed`
+2. End timestamp is recorded in `endDateTime`
+3. Final scores and statistics are finalized
+4. Match result is calculated based on innings scores
+5. Player statistics are updated (if not skipped)
+
+## Match Results
+
+After ending a match, you can retrieve the result via:
+- `/matches/{matchId}/summary` - Get match summary with result
+- `/matches/{matchId}/scorecard` - Get full scorecard
+
+## Example Request
+
+```bash
+curl -X POST https://api.cricpr.com/v1/matches/688cbcf35ceca63a9cd62b6d/end \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+## Example Response
+
+```json
+{
+  "_id": "688cbcf35ceca63a9cd62b6d",
+  "title": "Codefied vs Techvaders",
+  "status": "completed",
+  "startdatetime": "2025-08-01T13:46:05.851Z",
+  "endDateTime": "2025-08-01T18:30:00.000Z",
+  "location": "Karachi",
+  "matchCategory": "friendly",
+  "teamAInstanceId": {
+    "_id": "688cbcf15ceca63a9cd62b69",
+    "players": [...],
+    "captainId": "688a39d037dd526c18a5bb16",
+    "scorerId": "688a39d037dd526c18a5bb16"
+  },
+  "teamBInstanceId": {
+    "_id": "688cbcf25ceca63a9cd62b6b",
+    "players": [...],
+    "captainId": "688cb06818c2232abefa254e",
+    "scorerId": "688cb06818c2232abefa254e"
+  },
+  "matchConfigId": {
+    "_id": "688cbcef5ceca63a9cd62b67",
+    "ballType": "tennis",
+    "pitchType": "matting",
+    "overs": 5,
+    "matchType": "limitedOvers",
+    "noOfDays": 1,
+    "oversPerBowler": 1
+  },
+  "tossWinnerTeamInstanceId": {
+    "_id": "688cbcf15ceca63a9cd62b69"
+  },
+  "tossDecision": "bat",
+  "tossTime": "2025-08-01T13:46:05.850Z"
+}
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid operation
+  - Match not started yet (status is not `inProgress`)
+  - Match already completed
+  - No innings data to finalize
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Match not found with the specified ID
+</ResponseField>

@@ -1,0 +1,622 @@
+---
+title: 'WebSocket Communication'
+description: 'Implement real-time features with Socket.IO'
+icon: 'plug'
+---
+
+## Overview
+
+The CricPR API uses Socket.IO for real-time bidirectional communication, enabling features like live chat, active user tracking, typing indicators, and real-time notifications.
+
+## Socket.IO Architecture
+
+```
+┌─────────────────────────────────────────┐
+│          Socket.IO Server               │
+│  ┌───────────────────────────────┐     │
+│  │      Namespace: /             │     │
+│  │  ┌─────────────────────────┐  │     │
+│  │  │ Room: chat:123          │  │     │
+│  │  │ Room: match:456         │  │     │
+│  │  │ Room: tournament:789    │  │     │
+│  │  └─────────────────────────┘  │     │
+│  └───────────────────────────────┘     │
+└─────────────────────────────────────────┘
+             │
+    ┌────────┼────────┐
+    ▼        ▼        ▼
+  Client  Client  Client
+```
+
+## Server Configuration
+
+The Socket.IO server is initialized with CORS support:
+
+```javascript socket.service.js
+const socketIo = require('socket.io');
+
+const initializeSocket = (server) => {
+  io = socketIo(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+      credentials: true
+    }
+  });
+
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id);
+    
+    // Event handlers
+    setupEventHandlers(socket);
+  });
+};
+
+module.exports = { initializeSocket };
+```
+
+<Warning>
+  In production, replace `origin: '*'` with specific allowed origins for security.
+</Warning>
+
+## Core Features
+
+### 1. Active Users Tracking
+
+Track and broadcast active users in real-time:
+
+<Steps>
+  <Step title="User Goes Active">
+    Client emits `active` event with userId:
+    
+    ```javascript
+    socket.emit('active', userId);
+    ```
+  </Step>
+
+  <Step title="Server Updates List">
+    Server maintains active users array:
+    
+    ```javascript
+    socket.on('active', async (userId) => {
+      // Add user to active list
+      userIds.push(`${socket.id}split${userId}`);
+      
+      // Query user details from database
+      const userDocs = await User.find({
+        _id: { $in: userIds.map(itm => itm.split('split')[1]) }
+      }).select('profilePicture name email dob');
+      
+      // Create activity record
+      const existingLogin = await Activity.findOne({ userId });
+      if (!existingLogin) {
+        await new Activity({ userId }).save();
+      }
+      
+      // Broadcast to all clients
+      io.emit('activeUsers', formattedUserData);
+    });
+    ```
+  </Step>
+
+  <Step title="Clients Receive Update">
+    All connected clients receive active users list:
+    
+    ```javascript
+    socket.on('activeUsers', (users) => {
+      console.log('Active users:', users);
+      // Update UI with active users
+    });
+    ```
+  </Step>
+</Steps>
+
+### 2. Chat System
+
+#### Joining Chat Rooms
+
+```javascript
+// Client joins a chat room
+socket.emit('join', {
+  userId: '123',
+  chatId: 'abc'
+});
+
+// Server handles join
+socket.on('join', ({ userId, chatId }) => {
+  users[socket.id] = userId;
+  socket.join(chatId);  // Socket.IO room
+  io.emit('userList', users);
+});
+```
+
+#### Private Messages
+
+<CodeGroup>
+```javascript Client Send
+socket.emit('privateMessage', {
+  chatId: 'abc',
+  message: 'Hello!',
+  senderId: '123',
+  content_type: 'text'
+});
+```
+
+```javascript Server Handle
+socket.on('privateMessage', async ({ chatId, message, senderId, content_type, isBot }) => {
+  const chat = await Chat.findById(chatId);
+  
+  if (chat.active) {
+    // Save message to database
+    const newMessage = new Message({
+      chat_id: chatId,
+      sender_id: senderId,
+      content: message,
+      content_type: content_type,
+      isBot: isBot || false
+    });
+    await newMessage.save();
+    
+    // Update chat last message
+    chat.lastMessage = newMessage._id;
+    await chat.save();
+    
+    // Broadcast to room
+    io.to(chatId).emit('privateMessage', {
+      message,
+      time: newMessage.createdAt,
+      sender_id: newMessage.sender_id,
+      read: newMessage.read,
+      isBot: newMessage.isBot,
+      content_type: newMessage.content_type
+    });
+  } else {
+    // Chat unavailable
+    io.to(chatId).emit('privateMessage', {
+      message: 'Chat is unavailable. Only you can see this message.',
+      time: new Date(),
+      sender_id: senderId,
+      read: false,
+      content_type: 'text'
+    });
+  }
+});
+```
+
+```javascript Client Receive
+socket.on('privateMessage', (data) => {
+  console.log('New message:', data);
+  // Update chat UI
+});
+```
+</CodeGroup>
+
+#### Group Messages
+
+```javascript
+socket.on('groupMessage', async ({ chatId, message, senderId, content_type }) => {
+  const chat = await Chat.findById(chatId);
+  
+  if (chat.active) {
+    const newMessage = new Message({
+      chat_id: chatId,
+      sender_id: senderId,
+      content: message,
+      content_type: content_type
+    });
+    
+    await newMessage.save();
+    chat.lastMessage = newMessage._id;
+    await chat.save();
+    
+    // Notify all members
+    const receiverIds = chat.members.filter(id => id.toString() !== senderId);
+    for (const id of receiverIds) {
+      const user = await User.findById(id);
+      // Send push notification (if implemented)
+    }
+    
+    // Broadcast to group room
+    io.to(chatId).emit('groupMessage', {
+      message,
+      time: newMessage.createdAt,
+      sender_id: newMessage.sender_id,
+      read: newMessage.read,
+      isBot: newMessage.isBot,
+      content_type: newMessage.content_type
+    });
+  }
+});
+```
+
+### 3. Typing Indicators
+
+<CodeGroup>
+```javascript Start Typing
+socket.emit('typing', chatId);
+
+// Server broadcasts to room
+socket.on('typing', (chatId) => {
+  io.to(chatId).emit('typing', {
+    user: users[socket.id]
+  });
+});
+```
+
+```javascript Stop Typing
+socket.emit('stopTyping', chatId);
+
+// Server broadcasts to room
+socket.on('stopTyping', (chatId) => {
+  io.to(chatId).emit('stopTyping', {
+    user: users[socket.id]
+  });
+});
+```
+</CodeGroup>
+
+### 4. Message Editing
+
+```javascript
+// Client edits message
+socket.emit('editMessage', {
+  messageId: '789',
+  newContent: 'Updated message'
+});
+
+// Server handles edit
+socket.on('editMessage', async ({ messageId, newContent }) => {
+  const message = await Message.findById(messageId);
+  if (!message) return;
+  
+  const chat = await Chat.findById(message.chat_id);
+  if (chat.active) {
+    message.content = newContent;
+    await message.save();
+    
+    // Broadcast update
+    io.to(message.chat_id).emit('editMessage', {
+      message: message.content,
+      time: message.createdAt,
+      sender_id: message.sender_id,
+      read: message.read,
+      isBot: message.isBot,
+      content_type: message.content_type
+    });
+  }
+});
+```
+
+### 5. Chat Status Check
+
+```javascript
+// Check if chat is active
+socket.emit('checkStatus', chatId);
+
+socket.on('checkStatus', async (chatId) => {
+  const chat = await Chat.findById(chatId);
+  io.to(chatId).emit('checkStatus', {
+    status: chat.active
+  });
+});
+```
+
+### 6. Batch Subscriptions
+
+Subscribe to batch updates:
+
+```javascript
+// Client subscribes to batch updates
+socket.emit('subscribeToBatch', batchId);
+
+// Server associates client with batch
+socket.on('subscribeToBatch', (batchId) => {
+  clients[batchId] = socket.id;
+});
+
+// Later, emit updates to batch subscribers
+io.to(clients[batchId]).emit('batchUpdate', data);
+```
+
+## Event Reference
+
+### Client → Server Events
+
+| Event | Parameters | Description |
+|-------|-----------|-------------|
+| `active` | `userId` | Mark user as active |
+| `activeUsers` | - | Request active users list |
+| `join` | `{ userId, chatId }` | Join chat room |
+| `typing` | `chatId` | Start typing indicator |
+| `stopTyping` | `chatId` | Stop typing indicator |
+| `privateMessage` | `{ chatId, message, senderId, content_type }` | Send private message |
+| `groupMessage` | `{ chatId, message, senderId, content_type }` | Send group message |
+| `editMessage` | `{ messageId, newContent }` | Edit existing message |
+| `checkStatus` | `chatId` | Check chat status |
+| `subscribeToBatch` | `batchId` | Subscribe to batch updates |
+
+### Server → Client Events
+
+| Event | Data | Description |
+|-------|------|-------------|
+| `activeUsers` | `Array<User>` | List of active users |
+| `userList` | `Object` | Map of socket IDs to user IDs |
+| `typing` | `{ user }` | User is typing |
+| `stopTyping` | `{ user }` | User stopped typing |
+| `privateMessage` | `Message` | New private message |
+| `groupMessage` | `Message` | New group message |
+| `editMessage` | `Message` | Updated message |
+| `checkStatus` | `{ status }` | Chat active status |
+
+## Connection Management
+
+### Connection
+
+```javascript
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  
+  // Store connection info
+  users[socket.id] = null; // Will be set on 'join'
+});
+```
+
+### Disconnection
+
+```javascript
+socket.on('disconnect', async () => {
+  // Remove from active users
+  const index = userIds.findIndex(itm => 
+    itm.split('split')[0] === socket.id
+  );
+  if (index > -1) {
+    userIds.splice(index, 1);
+  }
+  
+  // Remove from users map
+  delete users[socket.id];
+  
+  // Broadcast updated lists
+  io.emit('userList', users);
+  
+  // Fetch and broadcast active users
+  const userDocs = await User.find({
+    _id: { $in: userIds.map(itm => itm.split('split')[1]) }
+  }).select('profilePicture name email');
+  
+  io.emit('activeUsers', userDocs);
+});
+```
+
+## Room Management
+
+### Join Room
+
+```javascript
+// Join chat room
+socket.join(chatId);
+
+// Join multiple rooms
+socket.join([chatId, `user:${userId}`, `notifications:${userId}`]);
+```
+
+### Leave Room
+
+```javascript
+socket.leave(chatId);
+```
+
+### Broadcast to Room
+
+<CodeGroup>
+```javascript To Room (Excluding Sender)
+socket.to(chatId).emit('message', data);
+```
+
+```javascript To Room (Including Sender)
+io.to(chatId).emit('message', data);
+```
+
+```javascript To Multiple Rooms
+io.to(room1).to(room2).emit('message', data);
+```
+</CodeGroup>
+
+## Client Integration
+
+### Connection Setup
+
+<CodeGroup>
+```javascript JavaScript
+import io from 'socket.io-client';
+
+const socket = io('http://localhost:3001', {
+  transports: ['websocket'],
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 5
+});
+
+socket.on('connect', () => {
+  console.log('Connected:', socket.id);
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected');
+});
+```
+
+```javascript React
+import { useEffect, useState } from 'react';
+import io from 'socket.io-client';
+
+function Chat() {
+  const [socket, setSocket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  
+  useEffect(() => {
+    const newSocket = io('http://localhost:3001');
+    setSocket(newSocket);
+    
+    newSocket.on('privateMessage', (message) => {
+      setMessages(prev => [...prev, message]);
+    });
+    
+    return () => newSocket.close();
+  }, []);
+  
+  const sendMessage = (text) => {
+    socket.emit('privateMessage', {
+      chatId: 'abc',
+      message: text,
+      senderId: userId,
+      content_type: 'text'
+    });
+  };
+  
+  return <div>{/* Chat UI */}</div>;
+}
+```
+</CodeGroup>
+
+## Authentication
+
+Implement authentication middleware:
+
+```javascript
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  
+  if (!token) {
+    return next(new Error('Authentication error'));
+  }
+  
+  // Verify JWT token
+  jwt.verify(token, config.jwt.secret, (err, decoded) => {
+    if (err) {
+      return next(new Error('Authentication error'));
+    }
+    
+    socket.userId = decoded.sub;
+    next();
+  });
+});
+```
+
+## Performance Optimization
+
+### Redis Adapter (Recommended for Production)
+
+Scale across multiple servers:
+
+```javascript
+const { createAdapter } = require('@socket.io/redis-adapter');
+const { createClient } = require('redis');
+
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
+});
+```
+
+### Message Compression
+
+```javascript
+const io = socketIo(server, {
+  perMessageDeflate: {
+    threshold: 1024,  // Compress messages > 1KB
+    zlibDeflateOptions: {
+      level: 6  // Compression level
+    }
+  }
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Connection Management">
+    - Implement reconnection logic on client
+    - Clean up disconnected users
+    - Handle connection errors gracefully
+    - Monitor connection counts
+  </Accordion>
+
+  <Accordion title="Room Organization">
+    - Use consistent room naming conventions
+    - Leave rooms when no longer needed
+    - Limit number of rooms per socket
+    - Clean up empty rooms
+  </Accordion>
+
+  <Accordion title="Message Handling">
+    - Validate message content
+    - Sanitize user input
+    - Implement rate limiting
+    - Log suspicious activity
+  </Accordion>
+
+  <Accordion title="Scalability">
+    - Use Redis adapter for multi-server setup
+    - Implement message queuing for high load
+    - Monitor memory usage
+    - Set max connections per server
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Issues">
+    Check CORS configuration:
+    
+    ```javascript
+    cors: {
+      origin: 'http://localhost:3000',
+      methods: ['GET', 'POST'],
+      credentials: true
+    }
+    ```
+    
+    Verify client URL matches server.
+  </Accordion>
+
+  <Accordion title="Messages Not Received">
+    Ensure client is in the correct room:
+    
+    ```javascript
+    socket.emit('join', { userId, chatId });
+    ```
+    
+    Check event names match exactly.
+  </Accordion>
+
+  <Accordion title="Memory Leaks">
+    Clean up event listeners:
+    
+    ```javascript
+    socket.removeAllListeners('privateMessage');
+    ```
+    
+    Remove disconnected users from tracking arrays.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Redis Caching" icon="server" href="/infrastructure/redis-caching">
+    Scale with Redis adapter
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/infrastructure/architecture-overview">
+    Understand system design
+  </Card>
+  <Card title="API Integration" icon="code" href="/api/introduction">
+    Combine REST + WebSockets
+  </Card>
+  <Card title="PM2 Cluster" icon="circle-nodes" href="/infrastructure/pm2-cluster">
+    Deploy with clustering
+  </Card>
+</CardGroup>

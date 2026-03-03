@@ -1,0 +1,116 @@
+---
+title: "Start Match"
+api: "POST /v1/matches/{matchId}/start"
+---
+
+Start a match by recording the toss result and initializing the first innings.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer {token}
+```
+
+## Path Parameters
+
+<ParamField path="matchId" type="string" required>
+  Match ID (MongoDB ObjectId)
+</ParamField>
+
+## Request Body
+
+<ParamField body="tossWinnerTeamInstanceId" type="string" required>
+  Team instance ID that won the toss (must be either teamAInstanceId or teamBInstanceId from the match)
+</ParamField>
+
+<ParamField body="tossDecision" type="string" required>
+  Toss winner's decision
+  - `bat` - Choose to bat first
+  - `bowl` - Choose to bowl first (opponent bats first)
+</ParamField>
+
+## Response
+
+Returns the updated Match object with toss information and status changed to `inProgress`.
+
+<ResponseField name="_id" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Match status (set to `inProgress`)
+</ResponseField>
+
+<ResponseField name="tossWinnerTeamInstanceId" type="string">
+  Team instance ID that won the toss
+</ResponseField>
+
+<ResponseField name="tossDecision" type="string">
+  Toss decision: `bat` or `bowl`
+</ResponseField>
+
+<ResponseField name="tossTime" type="string">
+  Timestamp when toss was completed
+</ResponseField>
+
+<ResponseField name="teamAInstanceId" type="object">
+  Team A instance details
+</ResponseField>
+
+<ResponseField name="teamBInstanceId" type="object">
+  Team B instance details
+</ResponseField>
+
+<ResponseField name="matchConfigId" type="object">
+  Match configuration
+</ResponseField>
+
+## Prerequisites
+
+Before starting a match:
+1. Match must exist and have `status: pending`
+2. Teams must be registered (via `/registerTeam` endpoint)
+3. Both teams must have players assigned
+4. Captains and scorers must be designated
+
+## What Happens When Match Starts
+
+1. Match status changes from `pending` to `inProgress`
+2. Toss winner and decision are recorded
+3. Toss time is set to current timestamp
+4. First innings is automatically created based on toss decision:
+   - If toss winner chose "bat": toss winner bats first
+   - If toss winner chose "bowl": opponent bats first
+
+## Example Request
+
+```bash
+curl -X POST https://api.cricpr.com/v1/matches/688cbcf35ceca63a9cd62b6d/start \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tossWinnerTeamInstanceId": "688cbcf15ceca63a9cd62b69",
+    "tossDecision": "bat"
+  }'
+```
+
+## Error Codes
+
+<ResponseField name="400" type="error">
+  **Bad Request** - Invalid request data
+  - Missing required fields (tossWinnerTeamInstanceId, tossDecision)
+  - Invalid toss decision (must be "bat" or "bowl")
+  - Teams not registered yet
+  - Match already started
+  - Invalid team instance ID (not part of this match)
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  **Unauthorized** - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  **Not Found** - Match not found with the specified ID
+</ResponseField>

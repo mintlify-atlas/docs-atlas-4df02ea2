@@ -1,0 +1,190 @@
+---
+title: Teams and players
+description: Understanding team structure, player profiles, and role management in CricPR
+---
+
+Teams and players form the foundation of CricPR's cricket management system. This guide explains how teams are organized, how players are managed, and how roles are assigned.
+
+## Teams
+
+Teams represent permanent cricket organizations with a stable roster of players.
+
+### Team structure
+
+Each team contains:
+
+- **Name**: Unique identifier for the team
+- **Location**: Geographic location of the team
+- **Logo**: Optional team branding image
+- **Players**: Array of player references
+- **Captain**: Designated team leader (player reference)
+- **Created by**: Player who created the team
+
+<Warning>
+Team names must be unique across the entire CricPR system.
+</Warning>
+
+### Team roster management
+
+Teams maintain a permanent roster of players who:
+
+- Can participate in any match for that team
+- Are displayed in team profile pages
+- Appear in search results when users look for teams
+- Have historical statistics associated with the team
+
+## Players
+
+Players represent individual cricketers who can participate in matches.
+
+### Player types
+
+CricPR supports two types of players:
+
+#### Regular players
+
+- **Have user accounts**: Linked via `userId` field
+- **Searchable**: Appear in player search results
+- **Persistent**: Maintain statistics across matches
+- **Can be**: Captains, scorers, or wicket keepers
+- **Appear in**: Team rosters and match listings
+
+#### Guest players
+
+- **No user accounts**: `userId` is `null`
+- **Not searchable**: Excluded from player search
+- **Match-specific**: Created for individual matches only
+- **Cannot be**: Captains or scorers (but can be wicket keepers)
+- **Do not appear in**: Team rosters or general player listings
+
+See the [Guest players](/concepts/guest-players) guide for detailed information.
+
+### Player profile
+
+Regular player profiles include:
+
+| Field | Description |
+|-------|-------------|
+| `userId` | Reference to the user account |
+| `shortName` | Display name for the player |
+| `battingStyle` | Right, left, or none |
+| `bowlingStyle` | Type of bowling (fast, spin, etc.) |
+| `playingRole` | All-rounder, batsman, bowler, etc. |
+| `isVerified` | Whether the player profile is verified |
+| `status` | Current account status |
+
+### Player statuses
+
+Players can have the following statuses:
+
+- **active**: Player is active and can participate in matches
+- **incomplete_profile**: Player account exists but profile needs completion
+- **deactivated**: Player has temporarily deactivated their account
+- **deleted**: Player account has been deleted
+
+<Info>
+Most queries filter out players with `deleted` status automatically.
+</Info>
+
+### Batting styles
+
+Players specify their batting hand:
+
+- Right-handed
+- Left-handed  
+- None (for bowlers who rarely bat)
+
+### Bowling styles
+
+Players can select from various bowling styles:
+
+- Right-arm fast/medium
+- Left-arm fast/medium
+- Right-arm spin (off-spin, leg-spin)
+- Left-arm spin (orthodox, chinaman)
+- None (for specialist batsmen)
+
+## Team instances
+
+While teams represent permanent organizations, **team instances** are match-specific configurations.
+
+### Why team instances?
+
+Team instances allow:
+
+- Different lineups for different matches
+- Guest players in specific matches
+- Rotating captains and wicket keepers
+- Historical accuracy (preserving match-day rosters)
+
+### Team instance structure
+
+Each team instance contains:
+
+```javascript
+{
+  teamId: ObjectId,           // Reference to the permanent team
+  players: [ObjectId],        // Match-day squad (regular + guest players)
+  captainId: ObjectId,        // Match captain (must be regular player)
+  wicketKeeperId: ObjectId,   // Match wicket keeper (can be guest)
+  scorerId: ObjectId          // Match scorer (must be regular player)
+}
+```
+
+<Check>
+Captains and scorers must be regular players, not guest players.
+</Check>
+
+## Player roles in matches
+
+When teams register for a match, specific roles must be assigned:
+
+### Captain
+
+- **Required**: Every team must have a captain
+- **Must be**: A regular player (not a guest)
+- **Responsibilities**: Team leadership, toss decisions
+- **Reference**: Stored in team instance's `captainId`
+
+### Scorer
+
+- **Required**: Every team must designate a scorer
+- **Must be**: A regular player (not a guest)
+- **Responsibilities**: Recording match events and statistics
+- **Reference**: Can be stored at match or team instance level
+
+### Wicket keeper
+
+- **Optional**: Not required but recommended
+- **Can be**: Regular player or guest player
+- **Responsibilities**: Fielding behind the stumps
+- **Reference**: Stored in team instance's `wicketKeeperId`
+
+<Tip>
+The wicket keeper is the only role that can be assigned to a guest player.
+</Tip>
+
+## Player search and discovery
+
+The system provides player search functionality:
+
+- **Includes**: Regular players with user accounts
+- **Excludes**: Guest players (no `userId`)
+- **Filters**: By status (excludes deleted players)
+- **Results**: Player profiles with statistics
+
+## Team creation and ownership
+
+When creating a team:
+
+1. A player creates the team (recorded in `createdBy`)
+2. Team name is validated for uniqueness
+3. Initial roster can include the creator and other players
+4. A captain can be designated (optional at creation)
+5. Team location must be specified
+
+## Related concepts
+
+- [Matches](/concepts/matches) - Learn how teams participate in matches via team instances
+- [Guest players](/concepts/guest-players) - Understand temporary players for specific matches
+- [Tournaments](/concepts/tournaments) - See how teams register for competitive events

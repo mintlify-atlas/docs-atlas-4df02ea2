@@ -1,0 +1,101 @@
+---
+title: 'Update Team'
+api: 'PATCH /v1/teams/:teamId'
+---
+
+Update a team's details.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="teamId" type="string" required>
+  The ID of the team to update
+</ParamField>
+
+## Request Body
+
+At least one field must be provided.
+
+<ParamField body="name" type="string">
+  Team name
+</ParamField>
+
+<ParamField body="location" type="string">
+  Team location
+</ParamField>
+
+<ParamField body="logo" type="string">
+  Team logo URL
+</ParamField>
+
+<ParamField body="players" type="array">
+  Array of player IDs
+</ParamField>
+
+<ParamField body="captain" type="string">
+  Captain player ID (must be from the players array)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Team ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated team name
+</ResponseField>
+
+<ResponseField name="location" type="string">
+  Updated location
+</ResponseField>
+
+<ResponseField name="logo" type="string">
+  Updated logo URL
+</ResponseField>
+
+<ResponseField name="captain" type="object">
+  Updated captain details
+</ResponseField>
+
+<ResponseField name="players" type="array">
+  Updated players array
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PATCH https://api.cricpr.com/v1/teams/688a38f0fea3456a96402a30 \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Atnest 11 Updated",
+    "location": "Lahore, Pakistan"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Response
+{
+  "id": "688a38f0fea3456a96402a30",
+  "name": "Atnest 11 Updated",
+  "location": "Lahore, Pakistan",
+  "logo": "https://example.com/logo.png",
+  "captain": {
+    "id": "688cb06818c2232abefa254e"
+  },
+  "players": [
+    {
+      "id": "688cb06818c2232abefa254e"
+    }
+  ]
+}
+```
+</ResponseExample>

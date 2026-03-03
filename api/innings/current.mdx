@@ -1,0 +1,92 @@
+---
+title: 'Get Innings by ID'
+api: 'GET /v1/innings/{inningsId}'
+---
+
+Retrieve detailed information about a specific innings.
+
+## Path Parameters
+
+<ParamField path="inningsId" type="string" required>
+  The unique identifier of the innings
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Innings ID
+</ResponseField>
+
+<ResponseField name="matchId" type="string">
+  Match ID this innings belongs to
+</ResponseField>
+
+<ResponseField name="battingTeam" type="string">
+  ID of the team batting in this innings
+</ResponseField>
+
+<ResponseField name="bowlingTeam" type="string">
+  ID of the team bowling in this innings
+</ResponseField>
+
+<ResponseField name="inningsNumber" type="integer">
+  Innings number (1-4)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current status of the innings
+  - `pending` - Innings not yet started
+  - `inProgress` - Currently being played
+  - `completed` - Innings finished
+</ResponseField>
+
+<ResponseField name="totalRuns" type="integer">
+  Total runs scored in the innings
+</ResponseField>
+
+<ResponseField name="totalWickets" type="integer">
+  Total wickets fallen (0-10)
+</ResponseField>
+
+<ResponseField name="totalOvers" type="number">
+  Total overs bowled (e.g., 19.4 means 19 complete overs and 4 balls)
+</ResponseField>
+
+<ResponseField name="startTime" type="string">
+  ISO 8601 timestamp when innings started
+</ResponseField>
+
+<ResponseField name="endTime" type="string">
+  ISO 8601 timestamp when innings ended (if completed)
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X GET "https://api.cricpr.com/v1/innings/507f1f77bcf86cd799439020" \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "id": "507f1f77bcf86cd799439020",
+  "matchId": "507f1f77bcf86cd799439011",
+  "battingTeam": "507f1f77bcf86cd799439012",
+  "bowlingTeam": "507f1f77bcf86cd799439013",
+  "inningsNumber": 1,
+  "status": "completed",
+  "totalRuns": 185,
+  "totalWickets": 7,
+  "totalOvers": 20,
+  "startTime": "2026-03-03T10:00:00.000Z",
+  "endTime": "2026-03-03T11:45:00.000Z"
+}
+```
+
+## Error Responses
+
+<ResponseField name="404" type="error">
+  Innings not found
+</ResponseField>

@@ -1,0 +1,436 @@
+---
+title: Statistics
+description: Access comprehensive player and match statistics in real-time
+---
+
+This guide explains how to retrieve and interpret cricket statistics from the CricPR API.
+
+## Overview
+
+The API provides multiple levels of statistics:
+
+1. **Match statistics** - Overall match data and scorecard
+2. **Player statistics** - Batting, bowling, and fielding stats
+3. **Innings statistics** - Per-innings breakdowns
+4. **Live statistics** - Real-time updates during matches
+
+## Match statistics
+
+Get comprehensive match statistics including scorecard and player performance:
+
+```javascript
+GET /v1/matches/:matchId/stats
+```
+
+**Response:**
+
+```json
+{
+  "match": {
+    "_id": "64a1234567890abcdef12347",
+    "title": "Summer League Final",
+    "status": "completed",
+    "teamAInstanceId": {...},
+    "teamBInstanceId": {...}
+  },
+  "innings": [
+    {
+      "_id": "64a1234567890abcdef12370",
+      "battingTeamInstanceId": "64a1234567890abcdef12348",
+      "totalRuns": 165,
+      "totalWickets": 8,
+      "totalOvers": 20
+    }
+  ],
+  "playerStats": [...]
+}
+```
+
+<Note>
+Statistics are cached for performance. Use query parameters `?forceRefresh=true` to bypass cache or `?skipCache=true` to skip caching entirely.
+</Note>
+
+## Match scorecard
+
+Get detailed scorecard with batting and bowling figures:
+
+```javascript
+GET /v1/matches/:matchId/scorecard
+```
+
+**Response:**
+
+```json
+{
+  "matchId": "64a1234567890abcdef12347",
+  "innings": [
+    {
+      "inningsNumber": 1,
+      "battingTeam": "Mumbai Warriors",
+      "batting": [
+        {
+          "player": "Rohit Sharma",
+          "runs": 65,
+          "balls": 42,
+          "fours": 7,
+          "sixes": 2,
+          "strikeRate": 154.76,
+          "dismissal": "c Smith b Johnson"
+        }
+      ],
+      "bowling": [
+        {
+          "player": "Mitchell Johnson",
+          "overs": 4,
+          "maidens": 0,
+          "runs": 32,
+          "wickets": 2,
+          "economy": 8.0
+        }
+      ],
+      "extras": {
+        "wides": 5,
+        "noBalls": 2,
+        "byes": 3,
+        "legByes": 1,
+        "total": 11
+      },
+      "total": 165
+    }
+  ]
+}
+```
+
+## Match summary
+
+Get a quick match summary with result and key statistics:
+
+```javascript
+GET /v1/matches/:matchId/summary
+```
+
+**Response:**
+
+```json
+{
+  "matchId": "64a1234567890abcdef12347",
+  "title": "Summer League Final",
+  "result": "Mumbai Warriors won by 15 runs",
+  "teamA": {
+    "name": "Mumbai Warriors",
+    "runs": 165,
+    "wickets": 8,
+    "overs": 20
+  },
+  "teamB": {
+    "name": "Delhi Capitals",
+    "runs": 150,
+    "wickets": 10,
+    "overs": 18.4
+  },
+  "playerOfTheMatch": {
+    "playerId": "64a1234567890abcdef12350",
+    "name": "Rohit Sharma",
+    "performance": "65 runs off 42 balls"
+  }
+}
+```
+
+## Player statistics
+
+### Batting statistics
+
+Get detailed batting statistics for a player in a match:
+
+```json
+{
+  "playerId": "64a1234567890abcdef12350",
+  "matchId": "64a1234567890abcdef12347",
+  "battingStats": {
+    "runScored": 65,
+    "ballsFaced": 42,
+    "fours": 7,
+    "sixes": 2,
+    "strikeRate": 154.76,
+    "dotBalls": 15,
+    "singles": 20,
+    "twos": 8,
+    "threes": 2
+  }
+}
+```
+
+From `src/services/stats.service.js:128-200`, the API uses aggregation for optimal performance:
+
+```javascript
+const calculateAllPlayerStats = async (innings, overs) => {
+  // Get all balls from all overs
+  const allBalls = overs.reduce((acc, over) => [...acc, ...over.balls], []);
+
+  // Group balls by player (both batting and bowling)
+  const playerBalls = {};
+  allBalls.forEach((ball) => {
+    // Group by batsman
+    const batsmanId = ball.batsmanId.toString();
+    if (!playerBalls[batsmanId]) {
+      playerBalls[batsmanId] = { batting: [], bowling: [] };
+    }
+    playerBalls[batsmanId].batting.push(ball);
+
+    // Group by bowler
+    const bowlerId = ball.bowlerId.toString();
+    if (!playerBalls[bowlerId]) {
+      playerBalls[bowlerId] = { batting: [], bowling: [] };
+    }
+    playerBalls[bowlerId].bowling.push(ball);
+  });
+};
+```
+
+### Bowling statistics
+
+Bowling performance metrics:
+
+```json
+{
+  "playerId": "64a1234567890abcdef12360",
+  "matchId": "64a1234567890abcdef12347",
+  "bowlingStats": {
+    "overs": 4,
+    "maidens": 0,
+    "runConceded": 32,
+    "wickets": 2,
+    "economy": 8.0,
+    "dotBalls": 10,
+    "wides": 2,
+    "noBalls": 1
+  }
+}
+```
+
+### Fielding statistics
+
+Fielding contributions:
+
+```json
+{
+  "playerId": "64a1234567890abcdef12365",
+  "matchId": "64a1234567890abcdef12347",
+  "fieldingStats": {
+    "catches": 2,
+    "runOuts": 1,
+    "stumpings": 0,
+    "directHits": 1
+  }
+}
+```
+
+## Innings statistics
+
+Get statistics for a specific innings:
+
+```javascript
+GET /v1/innings/:inningsId/stats
+```
+
+**Response:**
+
+```json
+{
+  "inningsId": "64a1234567890abcdef12370",
+  "totalRuns": 165,
+  "totalWickets": 8,
+  "totalOvers": 20,
+  "runRate": 8.25,
+  "partnerships": [
+    {
+      "wicket": 1,
+      "runs": 45,
+      "balls": 32,
+      "batsman1": "Rohit Sharma",
+      "batsman2": "Quinton de Kock"
+    }
+  ],
+  "fallOfWickets": [
+    {
+      "wicket": 1,
+      "runs": 45,
+      "over": 5.3,
+      "batsman": "Quinton de Kock"
+    }
+  ]
+}
+```
+
+## Stats calculation
+
+The API recalculates statistics automatically when:
+
+1. A ball is recorded
+2. A ball is updated or undone
+3. An innings ends
+4. A match ends
+
+From `src/services/stats.service.js:96-120`:
+
+```javascript
+const updateInningsStats = async (inningsId) => {
+  const inningsData = await Innings.findById(inningsId)
+    .populate('battingTeamInstanceId bowlingTeamInstanceId');
+
+  // Get all overs for this innings
+  const overs = await Overs.find({ inningsId }).populate('balls');
+
+  // Calculate all player stats (batting and bowling)
+  const results = await calculateAllPlayerStats(inningsData, overs);
+
+  return {
+    inningsId: inningsData._id,
+    results,
+  };
+};
+```
+
+<Note>
+Stats updates run asynchronously using background workers to avoid blocking API responses during live scoring.
+</Note>
+
+## Caching strategy
+
+Statistics are cached with different TTL based on match status:
+
+<Steps>
+
+### Completed matches
+
+Cached for 24 hours (86400 seconds):
+
+```javascript
+const ttl = match?.status === 'completed' ? 86400 : 300;
+```
+
+### Live matches
+
+Cached for 5 minutes (300 seconds) for real-time accuracy
+
+### Force refresh
+
+Bypass cache when needed:
+
+```javascript
+GET /v1/matches/:matchId/stats?forceRefresh=true
+```
+
+</Steps>
+
+## Statistics query options
+
+Customize statistics retrieval:
+
+<ParamField query="forceRefresh" type="boolean" default="false">
+  Bypass cache and fetch fresh data
+</ParamField>
+
+<ParamField query="skipCache" type="boolean" default="false">
+  Skip caching entirely (for testing)
+</ParamField>
+
+<ParamField query="skipStatsUpdate" type="boolean" default="false">
+  Skip triggering background stats update
+</ParamField>
+
+**Example:**
+
+```javascript
+GET /v1/matches/:matchId/scorecard?forceRefresh=true&skipStatsUpdate=false
+```
+
+## Match analysis
+
+Get advanced match analysis with insights:
+
+```javascript
+GET /v1/matches/:matchId/analysis
+```
+
+**Response:**
+
+```json
+{
+  "matchId": "64a1234567890abcdef12347",
+  "momentum": [
+    { "over": 1, "runs": 8, "wickets": 0 },
+    { "over": 2, "runs": 12, "wickets": 1 }
+  ],
+  "powerplayStats": {
+    "runs": 48,
+    "wickets": 1,
+    "runRate": 8.0
+  },
+  "deathOverStats": {
+    "overs": "16-20",
+    "runs": 62,
+    "wickets": 3,
+    "runRate": 12.4
+  }
+}
+```
+
+## Player milestones
+
+The API automatically tracks and notifies players of milestones:
+
+- **Batting**: 30 runs, half-century (50), century (100)
+- **Bowling**: 3 wickets, fifer (5 wickets)
+- **Player of the Match**: Calculated based on performance score
+
+From `src/services/match.service.js:382-522`:
+
+```javascript
+const sendPlayerMilestoneNotifications = async (matchId) => {
+  // Get all player match stats
+  const playerMatchStats = await PlayerMatchStats.find({ matchId })
+    .populate('playerId')
+    .populate('battingStatsId')
+    .populate('bowlingStatsId');
+
+  // Check for milestones
+  for (const playerStat of playerMatchStats) {
+    const battingStats = playerStat.battingStatsId;
+    const bowlingStats = playerStat.bowlingStatsId;
+    const milestones = [];
+
+    // Batting milestones
+    if (battingStats) {
+      const runs = battingStats.runScored || 0;
+      if (runs >= 100) {
+        milestones.push('Scored Century');
+      } else if (runs >= 50) {
+        milestones.push('Scored Half Century');
+      }
+    }
+
+    // Bowling milestones
+    if (bowlingStats) {
+      const wickets = bowlingStats.wickets || 0;
+      if (wickets >= 5) {
+        milestones.push('Took Fifer');
+      }
+    }
+  }
+};
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Offline sync" icon="wifi-slash" href="/guides/offline-sync">
+  Sync statistics when back online
+</Card>
+
+<Card title="Real-time updates" icon="bolt" href="/guides/real-time-updates">
+  Stream live statistics updates
+</Card>
+
+</CardGroup>

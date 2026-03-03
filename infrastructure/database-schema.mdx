@@ -1,0 +1,578 @@
+---
+title: 'Database Schema'
+description: 'Complete MongoDB schema reference for CricPR API'
+icon: 'database'
+---
+
+## Overview
+
+The CricPR API uses MongoDB with Mongoose ODM for data persistence. The schema is designed to handle complex cricket match data, user management, tournament systems, and real-time statistics tracking.
+
+## Schema Organization
+
+The database is organized into logical domains:
+
+<CardGroup cols={2}>
+  <Card title="User Management" icon="users">
+    Users, roles, permissions, tokens
+  </Card>
+  <Card title="Cricket Domain" icon="baseball">
+    Players, teams, matches, statistics
+  </Card>
+  <Card title="Tournament System" icon="trophy">
+    Tournaments, stages, groups, standings
+  </Card>
+  <Card title="Communication" icon="messages">
+    Chats, messages, notifications
+  </Card>
+</CardGroup>
+
+## Core Models
+
+### User Model
+
+Manages user accounts and authentication:
+
+```javascript user.model.js
+const userSchema = mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true,
+    validate: [validator.isEmail, 'Invalid email']
+  },
+  password: { 
+    type: String, 
+    required: true, 
+    minlength: 8,
+    private: true  // Excluded from JSON responses
+  },
+  phone: { type: String, unique: true, sparse: true },
+  gender: { 
+    type: String, 
+    enum: ['male', 'female', 'prefer not to say'],
+    default: 'male'
+  },
+  city: { type: String, trim: true },
+  dob: { type: Date },
+  profilePicture: { type: String },
+  roles: [{ type: ObjectId, ref: 'Role' }],
+  isEmailVerified: { type: Boolean, default: false },
+  isPhoneVerified: { type: Boolean, default: false },
+  provider: { 
+    type: String, 
+    enum: ['local', 'google', 'facebook', 'apple'],
+    default: 'local'
+  },
+  providerId: { type: String, unique: true, sparse: true },
+  status: { 
+    type: String, 
+    enum: ['active', 'deactivated', 'deleted'],
+    default: 'active'
+  },
+  fcmToken: { type: String, default: null }
+}, { timestamps: true });
+
+// Indexes
+userSchema.index({ email: 1 });
+userSchema.index({ phone: 1 });
+userSchema.index({ status: 1 });
+```
+
+<AccordionGroup>
+  <Accordion title="Static Methods">
+    ```javascript
+    // Check if email is taken
+    userSchema.statics.isEmailTaken = async function(email, excludeUserId) {
+      const user = await this.findOne({ 
+        email, 
+        _id: { $ne: excludeUserId },
+        status: { $ne: 'deleted' }
+      });
+      return !!user;
+    };
+
+    // Find active users
+    userSchema.statics.findActive = function(filter = {}) {
+      return this.find({ ...filter, status: 'active' });
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Instance Methods">
+    ```javascript
+    // Password matching
+    userSchema.methods.isPasswordMatch = async function(password) {
+      return bcrypt.compare(password, this.password);
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="Middleware Hooks">
+    ```javascript
+    // Hash password before saving
+    userSchema.pre('save', async function(next) {
+      if (this.isModified('password')) {
+        this.password = await bcrypt.hash(this.password, 8);
+      }
+      next();
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Player Model
+
+Extends user with cricket-specific attributes:
+
+```javascript player.model.js
+const playerSchema = mongoose.Schema({
+  userId: { 
+    type: ObjectId, 
+    ref: 'User',
+    required: false  // Guest players don't have userId
+  },
+  isGuest: { type: Boolean, default: false },
+  battingStyle: { 
+    type: String,
+    enum: ['Right-hand bat', 'Left-hand bat', 'none'],
+    default: 'none'
+  },
+  bowlingStyle: { 
+    type: String,
+    enum: [
+      'Right-arm fast', 'Left-arm fast',
+      'Right-arm medium', 'Left-arm medium',
+      'Right-arm spin', 'Left-arm spin',
+      'none'
+    ],
+    default: 'none'
+  },
+  playingRole: { type: String },
+  isVerified: { type: Boolean, default: false },
+  status: { 
+    type: String,
+    enum: ['active', 'incomplete_profile', 'deactivated', 'deleted'],
+    default: 'active'
+  },
+  shortName: { type: String, trim: true }
+}, { timestamps: true });
+
+// Indexes
+playerSchema.index({ userId: 1 });
+playerSchema.index({ status: 1 });
+```
+
+### Team Model
+
+Represents cricket teams:
+
+```javascript team.model.js
+const teamSchema = mongoose.Schema({
+  name: { 
+    type: String, 
+    required: true, 
+    unique: true 
+  },
+  logo: { type: String },
+  location: { type: String, required: true },
+  players: [{ type: ObjectId, ref: 'Player' }],
+  captain: { type: ObjectId, ref: 'Player' },
+  createdBy: { 
+    type: ObjectId, 
+    ref: 'Player',
+    required: true
+  }
+}, { timestamps: true });
+
+// Pre-save hook for unique validation
+teamSchema.pre('save', async function(next) {
+  if (this.isModified('name')) {
+    const isNameTaken = await this.constructor.isTeamNameTaken(
+      this.name, 
+      this._id
+    );
+    if (isNameTaken) {
+      throw new Error('Team name is already taken');
+    }
+  }
+  next();
+});
+```
+
+### Match Model
+
+Core match management:
+
+```javascript match.model.js
+const matchSchema = mongoose.Schema({
+  title: { type: String, required: true, trim: true },
+  teamAInstanceId: { 
+    type: ObjectId, 
+    ref: 'TeamInstance',
+    required: true
+  },
+  teamBInstanceId: { 
+    type: ObjectId, 
+    ref: 'TeamInstance',
+    required: true
+  },
+  status: { 
+    type: String,
+    enum: ['pending', 'inProgress', 'completed', 'cancelled', 'postponed'],
+    default: 'pending'
+  },
+  matchType: { 
+    type: String,
+    enum: ['friendly', 'tournament'],
+    default: 'friendly'
+  },
+  matchCategory: { type: String },
+  startdatetime: { type: Date, required: true },
+  endDateTime: { type: Date },
+  location: { type: String, trim: true },
+  scorerId: { type: ObjectId, refPath: 'scorerType' },
+  scorerType: { 
+    type: String,
+    enum: ['User', 'Player'],
+    default: 'User'
+  },
+  matchConfigId: { 
+    type: ObjectId, 
+    ref: 'MatchConfig',
+    required: true
+  },
+  tossWinnerTeamInstanceId: { type: ObjectId, ref: 'TeamInstance' },
+  tossDecision: { type: String },
+  tossTime: { type: Date },
+  winnerTeamInstanceId: { type: ObjectId, ref: 'TeamInstance' },
+  superOverCount: { type: Number, default: 0 },
+  isScheduled: { type: Boolean, default: false },
+  teamsRegistered: { type: Boolean, default: false },
+  url: { type: String, trim: true }
+}, { timestamps: true });
+
+// Compound indexes for efficient queries
+matchSchema.index({ teamAInstanceId: 1, teamBInstanceId: 1, startdatetime: 1 });
+matchSchema.index({ teamAInstanceId: 1, createdAt: -1 });
+matchSchema.index({ teamBInstanceId: 1, createdAt: -1 });
+matchSchema.index({ status: 1, createdAt: -1 });
+matchSchema.index({ scorerId: 1 });
+matchSchema.index({ teamAInstanceId: 1, status: 1 });
+matchSchema.index({ teamBInstanceId: 1, status: 1 });
+```
+
+<Note>
+  Match model uses extensive indexing to optimize common queries like "my matches" and "opponent history".
+</Note>
+
+### Tournament Model
+
+Manages tournament lifecycle:
+
+```javascript tournament.model.js
+const tournamentSchema = mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  coverImage: { type: String },
+  banner: { type: String },
+  city: { type: String, required: true, trim: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  maxTeams: { type: Number, required: true, min: 2 },
+  currentTeamsCount: { type: Number, default: 0, min: 0 },
+  format: { 
+    type: String,
+    enum: ['round_robin', 'knockout', 'hybrid', 'point_based'],
+    required: true
+  },
+  organizerType: { 
+    type: String,
+    enum: ['User', 'Player'],
+    required: true
+  },
+  organizerId: { 
+    type: ObjectId,
+    required: true,
+    refPath: 'organizerType'
+  },
+  status: { 
+    type: String,
+    enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
+    default: 'upcoming'
+  },
+  description: { type: String, trim: true },
+  registrationDeadline: { type: Date },
+  prize: { type: String, trim: true },
+  entryFee: { type: Number, min: 0, default: 0 },
+  isPublic: { type: Boolean, default: true },
+  teamIds: { type: [ObjectId], ref: 'Team', default: [] },
+  winnerTeamId: { type: ObjectId, ref: 'Team', default: null }
+}, { timestamps: true });
+
+// Indexes
+tournamentSchema.index({ organizerId: 1, organizerType: 1 });
+tournamentSchema.index({ status: 1, startDate: 1 });
+tournamentSchema.index({ city: 1, startDate: 1 });
+tournamentSchema.index({ teamIds: 1 });
+
+// Validation
+tournamentSchema.pre('save', function(next) {
+  if (this.endDate <= this.startDate) {
+    throw new Error('End date must be after start date');
+  }
+  next();
+});
+```
+
+## Match Statistics Models
+
+### Innings Model
+
+```javascript innings.model.js
+const inningsSchema = mongoose.Schema({
+  matchId: { type: ObjectId, ref: 'Match', required: true },
+  teamInstanceId: { type: ObjectId, ref: 'TeamInstance', required: true },
+  inningsNumber: { type: Number, required: true },
+  totalRuns: { type: Number, default: 0 },
+  totalWickets: { type: Number, default: 0 },
+  totalOvers: { type: Number, default: 0 },
+  extras: {
+    wides: { type: Number, default: 0 },
+    noBalls: { type: Number, default: 0 },
+    byes: { type: Number, default: 0 },
+    legByes: { type: Number, default: 0 },
+    penalties: { type: Number, default: 0 }
+  },
+  isDeclared: { type: Boolean, default: false },
+  isFollowOn: { type: Boolean, default: false }
+}, { timestamps: true });
+```
+
+### Batting Stats Model
+
+```javascript battingStats.model.js
+const battingStatsSchema = mongoose.Schema({
+  matchId: { type: ObjectId, ref: 'Match', required: true },
+  inningsId: { type: ObjectId, ref: 'Innings', required: true },
+  playerId: { type: ObjectId, ref: 'Player', required: true },
+  runs: { type: Number, default: 0 },
+  ballsFaced: { type: Number, default: 0 },
+  fours: { type: Number, default: 0 },
+  sixes: { type: Number, default: 0 },
+  strikeRate: { type: Number, default: 0 },
+  isOut: { type: Boolean, default: false },
+  dismissalType: { type: String },
+  bowlerId: { type: ObjectId, ref: 'Player' },
+  fielder1Id: { type: ObjectId, ref: 'Player' },
+  fielder2Id: { type: ObjectId, ref: 'Player' },
+  battingPosition: { type: Number }
+}, { timestamps: true });
+```
+
+### Bowling Stats Model
+
+```javascript bowlingStats.model.js
+const bowlingStatsSchema = mongoose.Schema({
+  matchId: { type: ObjectId, ref: 'Match', required: true },
+  inningsId: { type: ObjectId, ref: 'Innings', required: true },
+  playerId: { type: ObjectId, ref: 'Player', required: true },
+  overs: { type: Number, default: 0 },
+  maidenOvers: { type: Number, default: 0 },
+  runsConceded: { type: Number, default: 0 },
+  wickets: { type: Number, default: 0 },
+  wides: { type: Number, default: 0 },
+  noBalls: { type: Number, default: 0 },
+  economy: { type: Number, default: 0 },
+  dotBalls: { type: Number, default: 0 }
+}, { timestamps: true });
+```
+
+## Mongoose Plugins
+
+All models use custom plugins for enhanced functionality:
+
+### toJSON Plugin
+
+```javascript plugins/toJSON.plugin.js
+// Transforms MongoDB documents to clean JSON
+// - Removes __v version field
+// - Converts _id to id
+// - Excludes private fields
+// - Removes null/undefined values
+
+schema.plugin(toJSON);
+```
+
+### Paginate Plugin
+
+```javascript plugins/paginate.plugin.js
+// Adds pagination support to queries
+const result = await Model.paginate(filter, {
+  page: 1,
+  limit: 10,
+  sort: '-createdAt',
+  populate: 'userId'
+});
+
+// Returns:
+// {
+//   results: [...],
+//   page: 1,
+//   limit: 10,
+//   totalPages: 5,
+//   totalResults: 50
+// }
+```
+
+## Indexing Strategy
+
+<AccordionGroup>
+  <Accordion title="Single Field Indexes">
+    Used for simple queries:
+    
+    ```javascript
+    userSchema.index({ email: 1 });
+    playerSchema.index({ userId: 1 });
+    matchSchema.index({ status: 1 });
+    ```
+  </Accordion>
+
+  <Accordion title="Compound Indexes">
+    Optimized for complex queries:
+    
+    ```javascript
+    matchSchema.index({ 
+      teamAInstanceId: 1, 
+      teamBInstanceId: 1, 
+      startdatetime: 1 
+    });
+    
+    tournamentSchema.index({ 
+      organizerId: 1, 
+      organizerType: 1 
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Sparse Indexes">
+    For optional unique fields:
+    
+    ```javascript
+    userSchema.index({ phone: 1 }, { sparse: true });
+    userSchema.index({ providerId: 1 }, { sparse: true });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Relationships
+
+### One-to-Many
+
+```javascript
+// User has many tokens
+const tokenSchema = mongoose.Schema({
+  userId: { type: ObjectId, ref: 'User', required: true }
+});
+
+// Team has many players
+const teamSchema = mongoose.Schema({
+  players: [{ type: ObjectId, ref: 'Player' }]
+});
+```
+
+### Polymorphic Relationships
+
+```javascript
+// Match can be organized by User or Player
+const matchSchema = mongoose.Schema({
+  scorerId: { type: ObjectId, refPath: 'scorerType' },
+  scorerType: { type: String, enum: ['User', 'Player'] }
+});
+
+// Query with population
+const match = await Match.findById(id).populate('scorerId');
+```
+
+## Data Validation
+
+<CodeGroup>
+```javascript Built-in Validators
+name: { 
+  type: String,
+  required: true,
+  minlength: 3,
+  maxlength: 100,
+  trim: true,
+  lowercase: true
+}
+```
+
+```javascript Custom Validators
+email: {
+  type: String,
+  validate: {
+    validator: (v) => validator.isEmail(v),
+    message: 'Invalid email format'
+  }
+}
+```
+
+```javascript Enum Validation
+status: {
+  type: String,
+  enum: ['pending', 'active', 'completed'],
+  default: 'pending'
+}
+```
+</CodeGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Schema Design">
+    - Use appropriate data types
+    - Add indexes for frequently queried fields
+    - Implement virtual fields for computed properties
+    - Use lean() for read-only queries
+  </Accordion>
+
+  <Accordion title="Relationships">
+    - Embed for one-to-few relationships
+    - Reference for one-to-many relationships
+    - Use polymorphic refs for flexible associations
+    - Populate only necessary fields
+  </Accordion>
+
+  <Accordion title="Performance">
+    - Create compound indexes for complex queries
+    - Use projection to limit returned fields
+    - Implement pagination for large datasets
+    - Cache frequently accessed data
+  </Accordion>
+
+  <Accordion title="Validation">
+    - Validate at schema level
+    - Use custom validators for complex rules
+    - Implement pre/post hooks for business logic
+    - Handle validation errors gracefully
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Redis Caching" icon="server" href="/infrastructure/redis-caching">
+    Cache database queries
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/introduction">
+    Explore API endpoints
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/infrastructure/architecture-overview">
+    System design overview
+  </Card>
+  <Card title="WebSockets" icon="plug" href="/infrastructure/websockets">
+    Real-time data updates
+  </Card>
+</CardGroup>

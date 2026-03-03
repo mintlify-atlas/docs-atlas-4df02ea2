@@ -1,0 +1,128 @@
+---
+title: "List Notifications"
+api: "GET /v1/notifications"
+description: "Retrieve a paginated list of notifications for the authenticated user"
+---
+
+Retrieve all notifications for the currently logged-in user with support for filtering and pagination.
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Query Parameters
+
+<ParamField query="page" type="integer" default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField query="limit" type="integer" default="10">
+  Number of notifications per page
+</ParamField>
+
+<ParamField query="sortBy" type="string">
+  Field to sort by (e.g., `createdAt:desc`, `createdAt:asc`)
+</ParamField>
+
+<ParamField query="read" type="boolean">
+  Filter notifications by read status. Set to `true` for read notifications, `false` for unread.
+</ParamField>
+
+## Response
+
+<ResponseField name="results" type="array">
+  Array of notification objects
+  
+  <ResponseField name="id" type="string">
+    Notification ID
+  </ResponseField>
+  
+  <ResponseField name="title" type="string">
+    Notification title
+  </ResponseField>
+  
+  <ResponseField name="body" type="string">
+    Notification message body
+  </ResponseField>
+  
+  <ResponseField name="read" type="boolean">
+    Whether the notification has been read
+  </ResponseField>
+  
+  <ResponseField name="action" type="string">
+    Action type (e.g., NONE, NAVIGATE)
+  </ResponseField>
+  
+  <ResponseField name="metadata" type="object">
+    Additional notification metadata
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="string">
+    Timestamp when the notification was created
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="page" type="integer">
+  Current page number
+</ResponseField>
+
+<ResponseField name="limit" type="integer">
+  Number of items per page
+</ResponseField>
+
+<ResponseField name="totalPages" type="integer">
+  Total number of pages
+</ResponseField>
+
+<ResponseField name="totalResults" type="integer">
+  Total number of notifications
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.cricpr.com/v1/notifications?page=1&limit=10&read=false' \
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json
+{
+  "results": [
+    {
+      "id": "60a7f8c8d5f3e2001f8e4e7a",
+      "title": "Match Starting Soon",
+      "body": "Your match against Team B starts in 30 minutes",
+      "read": false,
+      "action": "NAVIGATE",
+      "metadata": {
+        "matchId": "60a7f8c8d5f3e2001f8e4e7b"
+      },
+      "createdAt": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "id": "60a7f8c8d5f3e2001f8e4e7c",
+      "title": "New Team Invitation",
+      "body": "You have been invited to join Team C",
+      "read": false,
+      "action": "NONE",
+      "metadata": {},
+      "createdAt": "2024-01-14T14:20:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 10,
+  "totalPages": 3,
+  "totalResults": 25
+}
+```
+
+</ResponseExample>

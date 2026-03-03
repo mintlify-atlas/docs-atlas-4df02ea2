@@ -1,0 +1,133 @@
+---
+title: 'Update Innings'
+api: 'PATCH /v1/innings/{inningsId}'
+---
+
+Update an existing innings with new information.
+
+<Note>This endpoint requires authentication.</Note>
+
+## Path Parameters
+
+<ParamField path="inningsId" type="string" required>
+  The unique identifier of the innings to update
+</ParamField>
+
+## Body Parameters
+
+<ParamField body="matchId" type="string">
+  Match ID
+</ParamField>
+
+<ParamField body="battingTeam" type="string">
+  Batting team ID
+</ParamField>
+
+<ParamField body="bowlingTeam" type="string">
+  Bowling team ID
+</ParamField>
+
+<ParamField body="inningsNumber" type="integer">
+  Innings number (1-4)
+</ParamField>
+
+<ParamField body="status" type="string">
+  Innings status
+  - `pending`
+  - `inProgress`
+  - `completed`
+</ParamField>
+
+<ParamField body="totalRuns" type="integer">
+  Total runs scored (minimum: 0)
+</ParamField>
+
+<ParamField body="totalWickets" type="integer">
+  Total wickets fallen (0-10)
+</ParamField>
+
+<ParamField body="totalOvers" type="number">
+  Total overs bowled (minimum: 0)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Innings ID
+</ResponseField>
+
+<ResponseField name="matchId" type="string">
+  Match ID
+</ResponseField>
+
+<ResponseField name="battingTeam" type="string">
+  Batting team ID
+</ResponseField>
+
+<ResponseField name="bowlingTeam" type="string">
+  Bowling team ID
+</ResponseField>
+
+<ResponseField name="inningsNumber" type="integer">
+  Innings number
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Updated status
+</ResponseField>
+
+<ResponseField name="totalRuns" type="integer">
+  Updated total runs
+</ResponseField>
+
+<ResponseField name="totalWickets" type="integer">
+  Updated total wickets
+</ResponseField>
+
+<ResponseField name="totalOvers" type="number">
+  Updated total overs
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X PATCH "https://api.cricpr.com/v1/innings/507f1f77bcf86cd799439020" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "completed",
+    "totalRuns": 185,
+    "totalWickets": 7,
+    "totalOvers": 20
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "id": "507f1f77bcf86cd799439020",
+  "matchId": "507f1f77bcf86cd799439011",
+  "battingTeam": "507f1f77bcf86cd799439012",
+  "bowlingTeam": "507f1f77bcf86cd799439013",
+  "inningsNumber": 1,
+  "status": "completed",
+  "totalRuns": 185,
+  "totalWickets": 7,
+  "totalOvers": 20
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - Invalid input data
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  Unauthorized - Missing or invalid authentication token
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Innings not found
+</ResponseField>

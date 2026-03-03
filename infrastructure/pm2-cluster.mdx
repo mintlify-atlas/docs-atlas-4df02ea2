@@ -1,0 +1,480 @@
+---
+title: 'PM2 Cluster Mode'
+description: 'Scale CricPR API with PM2 process manager and cluster mode'
+icon: 'circle-nodes'
+---
+
+## Overview
+
+The CricPR API uses PM2 for production process management with cluster mode, enabling horizontal scaling across CPU cores with automatic load balancing, health monitoring, and zero-downtime deployments.
+
+## PM2 Configuration
+
+The `ecosystem.config.json` defines the cluster configuration:
+
+```json ecosystem.config.json
+{
+  "apps": [
+    {
+      "name": "cric-pr-backend",
+      "script": "src/cluster.js",
+      "instances": "max",
+      "exec_mode": "cluster",
+      "autorestart": true,
+      "watch": false,
+      "time": true,
+      "max_memory_restart": "1G",
+      "min_uptime": "10s",
+      "max_restarts": 10,
+      "restart_delay": 4000,
+      "kill_timeout": 5000,
+      "listen_timeout": 3000,
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 3000
+      },
+      "env_development": {
+        "NODE_ENV": "development",
+        "PORT": 3000
+      },
+      "env_staging": {
+        "NODE_ENV": "staging",
+        "PORT": 3000
+      },
+      "log_file": "./logs/combined.log",
+      "out_file": "./logs/out.log",
+      "error_file": "./logs/error.log",
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+      "merge_logs": true,
+      "node_args": "--max-old-space-size=1024"
+    }
+  ]
+}
+```
+
+## Configuration Options
+
+<AccordionGroup>
+  <Accordion title="Cluster Settings">
+    - `instances: "max"` - Uses all CPU cores
+    - `exec_mode: "cluster"` - Enables cluster mode
+    - `autorestart: true` - Automatically restarts on crash
+  </Accordion>
+
+  <Accordion title="Memory Management">
+    - `max_memory_restart: "1G"` - Restarts if memory exceeds 1GB
+    - `node_args: "--max-old-space-size=1024"` - Sets heap size limit
+  </Accordion>
+
+  <Accordion title="Restart Policies">
+    - `min_uptime: "10s"` - Minimum uptime before considering stable
+    - `max_restarts: 10` - Maximum restart attempts
+    - `restart_delay: 4000` - Delay between restarts (4 seconds)
+  </Accordion>
+
+  <Accordion title="Graceful Shutdown">
+    - `kill_timeout: 5000` - Time to wait before force killing (5 seconds)
+    - `listen_timeout: 3000` - Time to wait for app to listen (3 seconds)
+  </Accordion>
+</AccordionGroup>
+
+## Cluster Architecture
+
+The cluster implementation consists of three main components:
+
+### 1. Cluster Manager
+
+Located in `src/cluster/cluster.manager.js`, handles:
+
+- Master/worker process coordination
+- Worker forking and lifecycle
+- Health monitoring and auto-healing
+- Graceful shutdown procedures
+- Rolling restarts
+
+```javascript
+const manager = new ClusterManager();
+manager.start(); // Starts cluster with optimal worker count
+```
+
+### 2. Redis Cluster Manager
+
+Located in `src/cluster/redis.cluster.js`, provides:
+
+- Worker-specific Redis connections
+- Connection pooling per worker
+- Cross-worker cache coordination
+- Worker registration and tracking
+
+### 3. Worker Health Monitor
+
+Located in `src/cluster/worker.health.js`, monitors:
+
+- Memory usage per worker
+- Event loop lag detection
+- Health status reporting
+- Master-worker communication
+
+## Starting the Cluster
+
+<Steps>
+  <Step title="Development Mode">
+    Start with single worker for debugging:
+    
+    ```bash
+    npm run dev:cluster
+    ```
+    
+    Or use PM2 in development:
+    
+    ```bash
+    npm run start:dev
+    ```
+  </Step>
+
+  <Step title="Production Mode">
+    Start with all available CPU cores:
+    
+    ```bash
+    npm run start:prod
+    # Equivalent to:
+    pm2 start ecosystem.config.json --env production
+    ```
+  </Step>
+
+  <Step title="Staging Mode">
+    Start with half the CPU cores:
+    
+    ```bash
+    npm run start:staging
+    # Equivalent to:
+    pm2 start ecosystem.config.json --env staging
+    ```
+  </Step>
+
+  <Step title="No Daemon Mode">
+    Start in foreground (useful for containers):
+    
+    ```bash
+    npm start
+    # Equivalent to:
+    pm2 start ecosystem.config.json --no-daemon
+    ```
+  </Step>
+</Steps>
+
+## Worker Scaling Strategy
+
+<CodeGroup>
+```javascript Production
+// Uses all CPU cores
+getOptimalWorkerCount() {
+  if (config.env === 'production') {
+    return os.cpus().length;
+  }
+}
+```
+
+```javascript Development
+// Uses single worker to avoid port conflicts
+if (config.env === 'development') {
+  return 1;
+}
+```
+
+```javascript Default
+// Uses half the cores for other environments
+return Math.max(1, Math.floor(cpuCount / 2));
+```
+</CodeGroup>
+
+## PM2 Management Commands
+
+### Process Control
+
+<CodeGroup>
+```bash Start
+npm run start:prod
+```
+
+```bash Stop
+npm run stop
+```
+
+```bash Restart
+npm run restart
+```
+
+```bash Reload (Zero-downtime)
+npm run reload
+```
+
+```bash Delete
+npm run delete
+```
+</CodeGroup>
+
+### Monitoring
+
+<CodeGroup>
+```bash View Logs
+npm run logs
+# or
+pm2 logs cric-pr-backend
+```
+
+```bash Monitor Dashboard
+npm run monit
+# or
+pm2 monit
+```
+
+```bash Process List
+pm2 list
+```
+
+```bash Process Details
+pm2 show cric-pr-backend
+```
+</CodeGroup>
+
+### Advanced Operations
+
+<CodeGroup>
+```bash Scale Workers
+pm2 scale cric-pr-backend 4  # Set to 4 workers
+```
+
+```bash Flush Logs
+pm2 flush
+```
+
+```bash Save Configuration
+pm2 save
+```
+
+```bash Startup Script
+pm2 startup
+pm2 save
+```
+</CodeGroup>
+
+## Health Monitoring
+
+### Worker Health Checks
+
+Each worker monitors its own health:
+
+```javascript
+// Memory usage monitoring
+if (memUsageMB.heapUsed > 1000) { // 1GB threshold
+  this.isHealthy = false;
+  logger.error(`Worker marked as unhealthy due to high memory`);
+}
+
+// Event loop lag monitoring
+if (lag > 500) { // 500ms threshold
+  this.isHealthy = false;
+  logger.error(`Worker marked as unhealthy due to high event loop lag`);
+}
+```
+
+### Master-Worker Communication
+
+Master process pings workers every 30 seconds:
+
+```javascript
+// Master sends ping
+worker.send({ type: 'ping', timestamp: now });
+
+// Worker responds with pong
+process.send({
+  type: 'pong',
+  timestamp: message.timestamp,
+  pid: process.pid,
+  workerId: process.env.WORKER_ID
+});
+```
+
+## Graceful Shutdown
+
+<Steps>
+  <Step title="Signal Received">
+    Master receives SIGTERM or SIGINT signal
+  </Step>
+
+  <Step title="Stop New Connections">
+    Master stops accepting new worker forks
+  </Step>
+
+  <Step title="Worker Shutdown">
+    Each worker receives SIGTERM and closes connections:
+    
+    - Close database connections
+    - Complete pending requests
+    - Clean up Redis worker info
+  </Step>
+
+  <Step title="Force Kill Timeout">
+    Workers that don't exit within 10 seconds are force-killed
+  </Step>
+
+  <Step title="Master Exit">
+    Master process exits after all workers are down
+  </Step>
+</Steps>
+
+## Zero-Downtime Deployment
+
+### Rolling Restart
+
+Restart workers one at a time:
+
+```bash
+pm2 reload cric-pr-backend
+```
+
+The cluster manager handles rolling restarts:
+
+```javascript
+restartWorkers() {
+  const workers = Array.from(this.workers.values());
+  let currentIndex = 0;
+
+  const restartNext = () => {
+    if (currentIndex >= workers.length) return;
+    
+    const { worker } = workers[currentIndex];
+    worker.kill('SIGTERM');
+    
+    // Wait for worker to exit before restarting next
+    worker.on('exit', () => {
+      currentIndex++;
+      setTimeout(restartNext, 2000); // 2 second delay
+    });
+  };
+
+  restartNext();
+}
+```
+
+## Load Balancing
+
+PM2 automatically distributes incoming connections across workers using round-robin algorithm:
+
+```
+Client Request → PM2 Load Balancer → Worker 1
+                                    → Worker 2
+                                    → Worker 3
+                                    → Worker N
+```
+
+<Note>
+  Each worker maintains its own Redis connection and shares cached data across the cluster.
+</Note>
+
+## Logging
+
+### Log Configuration
+
+Logs are written to separate files:
+
+```json
+"log_file": "./logs/combined.log",
+"out_file": "./logs/out.log",
+"error_file": "./logs/error.log",
+"log_date_format": "YYYY-MM-DD HH:mm:ss Z",
+"merge_logs": true
+```
+
+### Log Rotation
+
+Set up PM2 log rotation:
+
+```bash
+pm2 install pm2-logrotate
+pm2 set pm2-logrotate:max_size 10M
+pm2 set pm2-logrotate:retain 7
+```
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Memory Management">
+    - Set appropriate `max_memory_restart` based on available RAM
+    - Monitor heap usage with `pm2 monit`
+    - Use `node_args` to tune V8 garbage collection
+  </Accordion>
+
+  <Accordion title="Worker Count">
+    - Production: Use all CPU cores
+    - Staging: Use half the cores to reserve capacity
+    - Development: Use single worker for debugging
+  </Accordion>
+
+  <Accordion title="Restart Strategy">
+    - Use `reload` instead of `restart` for zero-downtime
+    - Set appropriate `min_uptime` to detect unstable workers
+    - Configure `max_restarts` to prevent restart loops
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Workers Keep Restarting">
+    Check error logs:
+    
+    ```bash
+    pm2 logs cric-pr-backend --err
+    ```
+    
+    Common causes:
+    - Memory leaks (check `max_memory_restart`)
+    - Uncaught exceptions
+    - Port conflicts in development
+  </Accordion>
+
+  <Accordion title="High Memory Usage">
+    Monitor per-worker memory:
+    
+    ```bash
+    pm2 monit
+    ```
+    
+    Solutions:
+    - Lower `max_memory_restart` threshold
+    - Reduce `max-old-space-size`
+    - Investigate memory leaks
+  </Accordion>
+
+  <Accordion title="Cluster Not Starting">
+    Verify configuration:
+    
+    ```bash
+    pm2 prettylist
+    ```
+    
+    Check:
+    - PM2 is installed globally
+    - Port is not in use
+    - Environment variables are set
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Redis Caching" icon="server" href="/infrastructure/redis-caching">
+    Implement distributed caching
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/infrastructure/architecture-overview">
+    Understand cluster architecture
+  </Card>
+  <Card title="WebSockets" icon="plug" href="/infrastructure/websockets">
+    Real-time communication
+  </Card>
+  <Card title="Environment Setup" icon="gear" href="/infrastructure/environment-setup">
+    Configure environments
+  </Card>
+</CardGroup>

@@ -1,0 +1,102 @@
+---
+title: "Delete User Account"
+api: "DELETE /v1/users/:userId"
+description: "Delete a user account"
+---
+
+Permanently delete a user account. Regular users can only delete their own account, while admins can delete any user's account.
+
+<Warning>
+  This action is permanent and cannot be undone. All user data will be deleted.
+</Warning>
+
+## Authentication
+
+This endpoint requires authentication via Bearer token.
+
+```bash
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="userId" type="string" required>
+  The unique identifier of the user to delete
+</ParamField>
+
+## Response
+
+On successful deletion, this endpoint returns a `204 No Content` status with no response body.
+
+<RequestExample>
+
+```bash cURL
+curl --request DELETE \
+  --url 'https://api.cricpr.com/v1/users/60a7f8c8d5f3e2001f8e4e7d' \
+  --header 'Authorization: Bearer YOUR_ACCESS_TOKEN'
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text
+204 No Content
+```
+
+</ResponseExample>
+
+## Error Responses
+
+<ResponseField name="401 Unauthorized">
+  Missing or invalid authentication token
+  
+  ```json
+  {
+    "code": 401,
+    "message": "Please authenticate"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403 Forbidden">
+  User does not have permission to delete this account
+  
+  ```json
+  {
+    "code": 403,
+    "message": "Forbidden"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404 Not Found">
+  User not found
+  
+  ```json
+  {
+    "code": 404,
+    "message": "User not found"
+  }
+  ```
+</ResponseField>
+
+## Alternative Actions
+
+If you don't want to permanently delete the account, consider these alternatives:
+
+### Deactivate Account
+
+Temporarily deactivate the account without deleting data:
+
+```bash
+POST /v1/users/deactivate
+```
+
+### Anonymize Account
+
+Remove personally identifiable information while keeping statistical data:
+
+```bash
+POST /v1/users/anonymize
+```

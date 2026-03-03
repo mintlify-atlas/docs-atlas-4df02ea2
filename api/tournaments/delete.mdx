@@ -1,0 +1,37 @@
+---
+title: 'Delete Tournament'
+api: 'DELETE /v1/tournaments/:tournamentId'
+---
+
+Delete a tournament.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+
+```
+Authorization: Bearer YOUR_TOKEN
+```
+
+## Path Parameters
+
+<ParamField path="tournamentId" type="string" required>
+  The ID of the tournament to delete
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on success.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE https://api.cricpr.com/v1/tournaments/60d5ec49f1b2c8b1f8e4e1a2 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```text Response
+204 No Content
+```
+</ResponseExample>

@@ -1,0 +1,626 @@
+---
+title: Real-time updates
+description: Subscribe to live cricket match updates using WebSocket and Socket.io integration
+---
+
+This guide explains how to connect to the CricPR API's WebSocket service for real-time match updates.
+
+## Overview
+
+The CricPR API provides real-time updates through Socket.io, enabling:
+
+1. Live score updates as balls are bowled
+2. Instant wicket notifications
+3. Match status changes
+4. Chat and messaging between users
+
+<Note>
+The WebSocket service runs alongside the REST API and shares the same authentication.
+</Note>
+
+## Connection
+
+Connect to the Socket.io server:
+
+```javascript
+import io from 'socket.io-client';
+
+const socket = io('https://api.cricpr.com', {
+  transports: ['websocket'],
+  auth: {
+    token: 'your-jwt-token'
+  }
+});
+
+socket.on('connect', () => {
+  console.log('Connected to CricPR WebSocket');
+});
+
+socket.on('disconnect', () => {
+  console.log('Disconnected from CricPR WebSocket');
+});
+```
+
+From `src/services/socket.service.js:11-18`:
+
+```javascript
+const initializeSocket = (server) => {
+  io = socketIo(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST'],
+      credentials: true,
+    },
+  });
+
+  io.on('connection', (socket) => {
+    // Handle user joining and events
+  });
+};
+```
+
+## Authentication
+
+Include your JWT token when connecting:
+
+<CodeGroup>
+
+```javascript React Native
+import io from 'socket.io-client';
+
+const token = await AsyncStorage.getItem('auth_token');
+
+const socket = io('https://api.cricpr.com', {
+  auth: { token },
+  transports: ['websocket']
+});
+```
+
+```javascript Web
+import io from 'socket.io-client';
+
+const token = localStorage.getItem('auth_token');
+
+const socket = io('https://api.cricpr.com', {
+  auth: { token },
+  transports: ['websocket']
+});
+```
+
+</CodeGroup>
+
+## User presence
+
+Track active users in the application:
+
+<Steps>
+
+### Announce presence
+
+Notify server when user becomes active:
+
+```javascript
+socket.emit('active', userId);
+```
+
+### Listen for active users
+
+Receive list of currently active users:
+
+```javascript
+socket.on('activeUsers', (users) => {
+  console.log('Active users:', users);
+  // users: Array of user objects with profile info
+});
+```
+
+### Request active users
+
+Manually request the current list:
+
+```javascript
+socket.emit('activeUsers');
+```
+
+</Steps>
+
+From `src/services/socket.service.js:22-74`:
+
+```javascript
+socket.on('active', async (userId) => {
+  userIds.push(`${socket.id}split${userId}`);
+  const userDocs = await User.find({ _id: { $in: userIds.map((itm) => itm.split('split')[1]) } })
+    .select('profilePicture name email')
+    .exec();
+  
+  const finalData = await Promise.all(
+    userDocs.map(async (itm) => {
+      return {
+        profilePicture: itm.profilePicture,
+        name: itm.name,
+        email: itm.email,
+        id: itm._id,
+      };
+    })
+  );
+
+  io.emit('activeUsers', finalData);
+});
+```
+
+## Match subscriptions
+
+Subscribe to specific match updates:
+
+### Join match room
+
+```javascript
+socket.emit('join', {
+  userId: 'your-user-id',
+  matchId: 'match-id'
+});
+```
+
+### Listen for score updates
+
+```javascript
+socket.on('scoreUpdate', (data) => {
+  console.log('Score updated:', data);
+  /*
+  {
+    matchId: '64a1234567890abcdef12347',
+    runs: 165,
+    wickets: 5,
+    overs: 18.4,
+    currentOver: {
+      runs: 8,
+      balls: 4
+    }
+  }
+  */
+});
+```
+
+### Listen for wicket events
+
+```javascript
+socket.on('wicket', (data) => {
+  console.log('Wicket fallen:', data);
+  /*
+  {
+    matchId: '64a1234567890abcdef12347',
+    batsman: 'Rohit Sharma',
+    dismissal: 'c Smith b Johnson',
+    runs: 65,
+    balls: 42
+  }
+  */
+});
+```
+
+### Listen for over completion
+
+```javascript
+socket.on('overComplete', (data) => {
+  console.log('Over completed:', data);
+  /*
+  {
+    matchId: '64a1234567890abcdef12347',
+    overNumber: 18,
+    runs: 12,
+    wickets: 1,
+    bowler: 'Mitchell Johnson'
+  }
+  */
+});
+```
+
+## Chat and messaging
+
+The WebSocket service includes built-in chat functionality:
+
+<Steps>
+
+### Join chat room
+
+```javascript
+socket.emit('join', {
+  userId: 'your-user-id',
+  chatId: 'chat-room-id'
+});
+```
+
+### Send private message
+
+Send a direct message to another user:
+
+```javascript
+socket.emit('privateMessage', {
+  chatId: 'chat-room-id',
+  message: 'Great match!',
+  senderId: 'your-user-id',
+  content_type: 'text'
+});
+```
+
+### Receive private messages
+
+```javascript
+socket.on('privateMessage', (data) => {
+  console.log('New message:', data);
+  /*
+  {
+    message: 'Great match!',
+    time: '2024-07-15T14:30:00Z',
+    sender_id: 'user-id',
+    read: false,
+    content_type: 'text'
+  }
+  */
+});
+```
+
+### Send group message
+
+Send a message to a group chat:
+
+```javascript
+socket.emit('groupMessage', {
+  chatId: 'group-chat-id',
+  message: 'What a six!',
+  senderId: 'your-user-id',
+  content_type: 'text'
+});
+```
+
+### Receive group messages
+
+```javascript
+socket.on('groupMessage', (data) => {
+  console.log('Group message:', data);
+  /*
+  {
+    message: 'What a six!',
+    time: '2024-07-15T14:30:00Z',
+    sender_id: 'user-id',
+    read: false,
+    content_type: 'text'
+  }
+  */
+});
+```
+
+</Steps>
+
+From `src/services/socket.service.js:90-138`:
+
+```javascript
+socket.on('groupMessage', async ({ chatId, message, senderId, content_type: contentType }) => {
+  const chat = await Chat.findById(chatId);
+  if (chat.active) {
+    const newMessage = new Message({
+      chat_id: chatId,
+      sender_id: senderId,
+      content: message,
+      content_type: contentType,
+    });
+    
+    await newMessage.save();
+    
+    chat.lastMessage = newMessage._id;
+    await chat.save();
+
+    io.to(chatId).emit('groupMessage', {
+      message,
+      time: newMessage.createdAt,
+      sender_id: newMessage.sender_id,
+      read: newMessage.read,
+      content_type: newMessage.content_type,
+    });
+  }
+});
+```
+
+## Typing indicators
+
+Show when users are typing:
+
+### Start typing
+
+```javascript
+socket.emit('typing', chatId);
+```
+
+### Stop typing
+
+```javascript
+socket.emit('stopTyping', chatId);
+```
+
+### Listen for typing events
+
+```javascript
+socket.on('typing', (data) => {
+  console.log(`${data.user} is typing...`);
+});
+
+socket.on('stopTyping', (data) => {
+  console.log(`${data.user} stopped typing`);
+});
+```
+
+## Edit messages
+
+Edit previously sent messages:
+
+```javascript
+socket.emit('editMessage', {
+  messageId: 'message-id',
+  newContent: 'Updated message text'
+});
+
+socket.on('editMessage', (data) => {
+  console.log('Message edited:', data);
+  /*
+  {
+    message: 'Updated message text',
+    time: '2024-07-15T14:30:00Z',
+    sender_id: 'user-id',
+    read: false,
+    content_type: 'text'
+  }
+  */
+});
+```
+
+From `src/services/socket.service.js:187-210`:
+
+```javascript
+socket.on('editMessage', async ({ messageId, newContent }) => {
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) {
+      return;
+    }
+    const chat = await Chat.findById(message.chat_id);
+    if (chat.active) {
+      message.content = newContent;
+      await message.save();
+
+      io.to(message.chat_id).emit('editMessage', {
+        message: message.content,
+        time: message.createdAt,
+        sender_id: message.sender_id,
+        read: message.read,
+        content_type: message.content_type,
+      });
+    }
+  } catch (error) {
+    throw new Error();
+  }
+});
+```
+
+## Chat status
+
+Check if a chat is active:
+
+```javascript
+socket.emit('checkStatus', chatId);
+
+socket.on('checkStatus', (data) => {
+  console.log('Chat status:', data.status);
+  // data.status: true or false
+});
+```
+
+## Batch subscriptions
+
+Subscribe to batch updates (for admin features):
+
+```javascript
+socket.emit('subscribeToBatch', batchId);
+```
+
+From `src/services/socket.service.js:247-250`:
+
+```javascript
+socket.on('subscribeToBatch', (batchId) => {
+  clients[batchId] = socket.id; // Associate client with batch ID
+});
+```
+
+## Disconnect handling
+
+Handle graceful disconnection:
+
+```javascript
+socket.on('disconnect', () => {
+  console.log('Disconnected from server');
+  // Update UI to show offline status
+  // Queue operations locally if needed
+});
+
+socket.on('connect_error', (error) => {
+  console.error('Connection error:', error);
+  // Implement exponential backoff for reconnection
+});
+
+socket.on('reconnect', (attemptNumber) => {
+  console.log('Reconnected after', attemptNumber, 'attempts');
+  // Resync data after reconnection
+});
+```
+
+## Error handling
+
+Handle WebSocket errors:
+
+```javascript
+socket.on('error', (error) => {
+  console.error('Socket error:', error);
+});
+
+socket.on('connect_timeout', () => {
+  console.error('Connection timeout');
+});
+
+socket.io.on('reconnect_attempt', () => {
+  console.log('Attempting to reconnect...');
+});
+
+socket.io.on('reconnect_failed', () => {
+  console.error('Reconnection failed');
+});
+```
+
+## Best practices
+
+<AccordionGroup>
+
+<Accordion title="Implement exponential backoff">
+
+When reconnecting, use exponential backoff:
+
+```javascript
+const socket = io('https://api.cricpr.com', {
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  randomizationFactor: 0.5
+});
+```
+
+</Accordion>
+
+<Accordion title="Clean up event listeners">
+
+Remove listeners when component unmounts:
+
+```javascript
+useEffect(() => {
+  socket.on('scoreUpdate', handleScoreUpdate);
+  socket.on('wicket', handleWicket);
+
+  return () => {
+    socket.off('scoreUpdate', handleScoreUpdate);
+    socket.off('wicket', handleWicket);
+  };
+}, []);
+```
+
+</Accordion>
+
+<Accordion title="Use rooms for efficiency">
+
+Join specific rooms to receive only relevant updates:
+
+```javascript
+// Join match-specific room
+socket.emit('join', { userId, matchId });
+
+// Leave room when done
+socket.emit('leave', { matchId });
+```
+
+</Accordion>
+
+<Accordion title="Combine with REST API">
+
+Use WebSocket for real-time updates, REST API for data fetching:
+
+```javascript
+// Initial data: REST API
+const match = await fetch(`/v1/matches/${matchId}`).then(r => r.json());
+
+// Live updates: WebSocket
+socket.on('scoreUpdate', (data) => {
+  // Update local state with new scores
+  setMatch(prev => ({ ...prev, ...data }));
+});
+```
+
+</Accordion>
+
+</AccordionGroup>
+
+## Complete example
+
+Here's a complete React Native example:
+
+```javascript
+import React, { useEffect, useState } from 'react';
+import io from 'socket.io-client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+export default function LiveMatch({ matchId }) {
+  const [socket, setSocket] = useState(null);
+  const [score, setScore] = useState({ runs: 0, wickets: 0, overs: 0 });
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const initSocket = async () => {
+      const token = await AsyncStorage.getItem('auth_token');
+      const userId = await AsyncStorage.getItem('user_id');
+
+      const newSocket = io('https://api.cricpr.com', {
+        auth: { token },
+        transports: ['websocket']
+      });
+
+      newSocket.on('connect', () => {
+        setIsConnected(true);
+        newSocket.emit('join', { userId, matchId });
+      });
+
+      newSocket.on('disconnect', () => {
+        setIsConnected(false);
+      });
+
+      newSocket.on('scoreUpdate', (data) => {
+        setScore({
+          runs: data.runs,
+          wickets: data.wickets,
+          overs: data.overs
+        });
+      });
+
+      newSocket.on('wicket', (data) => {
+        alert(`Wicket! ${data.batsman} is out`);
+      });
+
+      setSocket(newSocket);
+    };
+
+    initSocket();
+
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [matchId]);
+
+  return (
+    <View>
+      <Text>Status: {isConnected ? 'Live' : 'Offline'}</Text>
+      <Text>Score: {score.runs}/{score.wickets} ({score.overs} overs)</Text>
+    </View>
+  );
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+
+<Card title="Offline sync" icon="wifi-slash" href="/guides/offline-sync">
+  Handle offline scenarios gracefully
+</Card>
+
+<Card title="Statistics" icon="chart-line" href="/guides/statistics">
+  Display live statistics as they update
+</Card>
+
+</CardGroup>

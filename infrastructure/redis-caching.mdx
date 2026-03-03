@@ -1,0 +1,551 @@
+---
+title: 'Redis Caching'
+description: 'Implement distributed caching with Redis for performance optimization'
+icon: 'server'
+---
+
+## Overview
+
+The CricPR API uses Redis as a distributed caching layer to improve performance, reduce database load, and enable cross-worker data sharing in clustered environments.
+
+## Redis Service Architecture
+
+```
+┌──────────────────────────────────────────┐
+│         Redis Service Layer              │
+├──────────────────────────────────────────┤
+│  ┌────────────┐      ┌────────────┐     │
+│  │  Standard  │      │  Cluster   │     │
+│  │   Mode     │      │   Mode     │     │
+│  └────────────┘      └────────────┘     │
+└──────────────────────────────────────────┘
+              │
+              ▼
+    ┌─────────────────┐
+    │  Redis Server   │
+    └─────────────────┘
+```
+
+## Connection Modes
+
+The Redis service automatically switches between modes based on environment:
+
+<Tabs>
+  <Tab title="Production (Cluster)">
+    ```javascript
+    // Cluster-aware connection
+    if (config.env === 'production') {
+      this.clusterManager = new RedisClusterManager();
+      await this.clusterManager.connect();
+      this.client = this.clusterManager.getClient();
+    }
+    ```
+    
+    Features:
+    - Worker-specific connections
+    - Connection name tracking
+    - Worker info stored in Redis
+    - Cross-worker coordination
+  </Tab>
+  
+  <Tab title="Development (Standard)">
+    ```javascript
+    // Standard Redis connection
+    this.client = new Redis({
+      host: config.redis.host,
+      port: config.redis.port,
+      db: config.redis.db,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+      keepAlive: 30000,
+      connectTimeout: 10000,
+      commandTimeout: 5000
+    });
+    ```
+    
+    Features:
+    - Single connection
+    - Simplified debugging
+    - Faster startup
+  </Tab>
+</Tabs>
+
+## Redis Service API
+
+### Basic Operations
+
+<CodeGroup>
+```javascript Set Value
+await redisService.set('user:123', userData, 3600);
+// TTL: 3600 seconds (1 hour)
+```
+
+```javascript Get Value
+const user = await redisService.get('user:123');
+if (user) {
+  console.log('Cache hit:', user);
+} else {
+  console.log('Cache miss');
+}
+```
+
+```javascript Delete Value
+await redisService.del('user:123');
+```
+
+```javascript Check Existence
+const exists = await redisService.exists('user:123');
+```
+</CodeGroup>
+
+### Pattern Operations
+
+<CodeGroup>
+```javascript Delete by Pattern
+// Delete all match-related caches
+await redisService.delPattern('match:*');
+
+// Delete specific list caches
+await redisService.delPattern('matches:list:*');
+```
+
+```javascript Get TTL
+const ttl = await redisService.ttl('user:123');
+console.log(`Expires in ${ttl} seconds`);
+```
+</CodeGroup>
+
+### Numeric Operations
+
+<CodeGroup>
+```javascript Increment
+// Increment by 1
+await redisService.incr('match:views:456');
+
+// Increment by custom value
+await redisService.incr('match:views:456', 5);
+```
+</CodeGroup>
+
+### Hash Operations
+
+<CodeGroup>
+```javascript Set Hash Field
+await redisService.hset('match:123', 'score', { runs: 150, wickets: 5 });
+```
+
+```javascript Get Hash Field
+const score = await redisService.hget('match:123', 'score');
+```
+
+```javascript Get All Hash Fields
+const matchData = await redisService.hgetall('match:123');
+// Returns: { score: {...}, status: '...' }
+```
+</CodeGroup>
+
+## Caching Patterns
+
+### Cache-Aside (Lazy Loading)
+
+Most common pattern - check cache first, load from DB on miss:
+
+```javascript
+async function getMatch(matchId) {
+  const cacheKey = `match:${matchId}`;
+  
+  // Try to get from cache
+  const cached = await redisService.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  
+  // Cache miss - load from database
+  const match = await Match.findById(matchId)
+    .populate('teamAInstanceId')
+    .populate('teamBInstanceId');
+  
+  if (!match) {
+    throw new ApiError(404, 'Match not found');
+  }
+  
+  // Store in cache for 1 hour
+  await redisService.set(cacheKey, match, 3600);
+  
+  return match;
+}
+```
+
+### Write-Through
+
+Update cache immediately when writing to database:
+
+```javascript
+async function updateMatch(matchId, updates) {
+  // Update database
+  const match = await Match.findByIdAndUpdate(
+    matchId,
+    updates,
+    { new: true }
+  );
+  
+  // Update cache
+  const cacheKey = `match:${matchId}`;
+  await redisService.set(cacheKey, match, 3600);
+  
+  // Invalidate list caches
+  await redisService.delPattern('matches:list:*');
+  
+  return match;
+}
+```
+
+### Cache Invalidation
+
+Remove stale data when updates occur:
+
+```javascript
+async function deleteMatch(matchId) {
+  // Delete from database
+  await Match.findByIdAndDelete(matchId);
+  
+  // Invalidate caches
+  await redisService.del(`match:${matchId}`);
+  await redisService.delPattern('matches:list:*');
+  await redisService.delPattern(`match:${matchId}:*`);
+}
+```
+
+### List Caching
+
+Cache paginated lists with query parameters:
+
+```javascript
+async function getMatches(filters, options) {
+  // Create cache key from filters and options
+  const cacheKey = `matches:list:${JSON.stringify(filters)}:${JSON.stringify(options)}`;
+  
+  // Try cache first
+  const cached = await redisService.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  
+  // Load from database
+  const result = await Match.paginate(filters, options);
+  
+  // Cache for 5 minutes (shorter TTL for lists)
+  await redisService.set(cacheKey, result, 300);
+  
+  return result;
+}
+```
+
+## Cluster Mode Features
+
+### Worker Registration
+
+Each worker registers itself in Redis:
+
+```javascript
+// Worker info stored in Redis
+await this.client.hset(`workers:${this.workerId}`, {
+  workerId: this.workerId,
+  pid: this.workerPid,
+  connectedAt: new Date().toISOString(),
+  hostname: os.hostname()
+});
+
+// Auto-expire after 5 minutes
+await this.client.expire(`workers:${this.workerId}`, 300);
+```
+
+### Active Workers Tracking
+
+Query all active workers:
+
+```javascript
+const workers = await redisClusterManager.getActiveWorkers();
+console.log(`Active workers: ${workers.length}`);
+workers.forEach(w => {
+  console.log(`Worker ${w.workerId} on PID ${w.pid}`);
+});
+```
+
+### Worker-Specific Logging
+
+All cache operations are tagged with worker ID:
+
+```javascript
+logger.debug(`Cache hit for worker ${this.workerId}: ${key}`);
+logger.debug(`Cache set by worker ${this.workerId}: ${key}`);
+```
+
+## Connection Management
+
+### Retry Strategy
+
+Automatic reconnection with exponential backoff:
+
+```javascript
+async handleConnectionError() {
+  if (this.retryAttempts < this.maxRetries) {
+    this.retryAttempts++;
+    const delay = this.retryDelay * Math.pow(2, this.retryAttempts - 1);
+    
+    logger.info(`Retrying Redis connection in ${delay}ms ` +
+                `(attempt ${this.retryAttempts}/${this.maxRetries})`);
+    
+    setTimeout(() => this.connect(), delay);
+  } else {
+    logger.error('Max Redis reconnection attempts reached');
+  }
+}
+```
+
+### Graceful Degradation
+
+Application continues working if Redis is unavailable:
+
+```javascript
+async get(key) {
+  if (!this.isRedisConnected()) {
+    logger.warn('Redis not connected, skipping cache get');
+    return null;  // Fail gracefully, load from DB
+  }
+  
+  // Normal cache operation
+  const value = await this.client.get(key);
+  return value ? JSON.parse(value) : null;
+}
+```
+
+## Cache Key Strategies
+
+<AccordionGroup>
+  <Accordion title="Entity Keys">
+    ```javascript
+    // Single entity
+    const key = `${modelName}:${id}`;
+    // Examples:
+    // user:123
+    // match:456
+    // team:789
+    ```
+  </Accordion>
+
+  <Accordion title="List Keys">
+    ```javascript
+    // Paginated lists
+    const key = `${modelName}:list:${page}:${limit}:${JSON.stringify(filters)}`;
+    // Examples:
+    // matches:list:1:10:{"status":"pending"}
+    // users:list:1:20:{"role":"admin"}
+    ```
+  </Accordion>
+
+  <Accordion title="Relationship Keys">
+    ```javascript
+    // Related data
+    const key = `${parentModel}:${parentId}:${childModel}`;
+    // Examples:
+    // match:123:innings
+    // team:456:players
+    // tournament:789:matches
+    ```
+  </Accordion>
+
+  <Accordion title="Session Keys">
+    ```javascript
+    // User sessions
+    const key = `session:${userId}:${sessionId}`;
+    // Token keys
+    const key = `token:${tokenHash}`;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## TTL Strategy
+
+<CodeGroup>
+```javascript Short-lived (5 minutes)
+// Real-time data, lists
+await redisService.set(key, data, 300);
+```
+
+```javascript Medium-lived (1 hour)
+// Frequently changing data
+await redisService.set(key, data, 3600);
+```
+
+```javascript Long-lived (24 hours)
+// Stable data
+await redisService.set(key, data, 86400);
+```
+
+```javascript Default (Config)
+// Use configured default
+await redisService.set(key, data);
+// Uses config.redis.ttl
+```
+</CodeGroup>
+
+## Monitoring and Stats
+
+### Get Cache Statistics
+
+```javascript
+const stats = await redisService.getStats();
+
+console.log(stats);
+// {
+//   workerId: '1',
+//   connected: true,
+//   memory: {...},
+//   keyspace: {...},
+//   uptime: 3600,
+//   activeWorkers: 4,
+//   workers: [...]
+// }
+```
+
+### Health Checks
+
+```javascript
+const isHealthy = redisService.isRedisConnected();
+if (!isHealthy) {
+  logger.error('Redis connection unhealthy');
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Cache Key Design">
+    - Use consistent naming conventions
+    - Include version in keys if schema changes
+    - Keep keys short but descriptive
+    - Use colons `:` as separators
+  </Accordion>
+
+  <Accordion title="TTL Selection">
+    - Shorter TTL for frequently changing data
+    - Longer TTL for stable reference data
+    - No TTL for session-critical data
+    - Balance freshness vs. database load
+  </Accordion>
+
+  <Accordion title="Invalidation">
+    - Invalidate on writes
+    - Use pattern deletion carefully (can be slow)
+    - Consider lazy invalidation for non-critical data
+    - Log invalidation events for debugging
+  </Accordion>
+
+  <Accordion title="Error Handling">
+    - Gracefully degrade if Redis unavailable
+    - Log cache errors but don't fail requests
+    - Monitor cache hit rates
+    - Set up alerts for connection issues
+  </Accordion>
+</AccordionGroup>
+
+## Performance Optimization
+
+### Pipeline Operations
+
+Batch multiple commands:
+
+```javascript
+const pipeline = redisService.getClient().pipeline();
+
+pipeline.get('user:1');
+pipeline.get('user:2');
+pipeline.get('user:3');
+
+const results = await pipeline.exec();
+```
+
+### Compression
+
+Compress large objects before caching:
+
+```javascript
+const compressed = zlib.gzipSync(JSON.stringify(largeObject));
+await redisService.getClient().set(key, compressed);
+
+// Decompress on read
+const data = await redisService.getClient().getBuffer(key);
+const decompressed = JSON.parse(zlib.gunzipSync(data));
+```
+
+### Connection Pooling
+
+Each worker maintains its own connection:
+
+```javascript
+// Per-worker connection with connection name
+connectionName: `worker-${this.workerId}-${this.workerPid}`
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Connection Failures">
+    Check Redis server status:
+    
+    ```bash
+    redis-cli ping
+    ```
+    
+    Verify configuration:
+    
+    ```javascript
+    console.log(config.redis);
+    ```
+  </Accordion>
+
+  <Accordion title="High Memory Usage">
+    Check memory stats:
+    
+    ```bash
+    redis-cli INFO memory
+    ```
+    
+    Solutions:
+    - Lower TTL values
+    - Compress large values
+    - Implement eviction policies
+  </Accordion>
+
+  <Accordion title="Cache Misses">
+    Monitor hit rate:
+    
+    ```bash
+    redis-cli INFO stats | grep hits
+    ```
+    
+    Improve:
+    - Increase TTL
+    - Pre-warm cache
+    - Review invalidation logic
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="PM2 Cluster" icon="circle-nodes" href="/infrastructure/pm2-cluster">
+    Scale with cluster mode
+  </Card>
+  <Card title="Database Schema" icon="database" href="/infrastructure/database-schema">
+    Optimize queries
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/infrastructure/architecture-overview">
+    System design patterns
+  </Card>
+  <Card title="WebSockets" icon="plug" href="/infrastructure/websockets">
+    Real-time updates
+  </Card>
+</CardGroup>
